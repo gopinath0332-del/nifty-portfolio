@@ -99,8 +99,32 @@ nifty-portfolio/
 
 ---
 
-### 📊 LATEST BENCHMARK METRICS (Nov 2025 – Nov 2026)
+### 📊 LATEST BENCHMARK METRICS
 
+#### 1. 5-Year Historical Performance (June 2021 – June 2026)
+- **Starting Capital:** ₹1,00,000.00
+- **Ending Capital:** **₹2,38,970.50** (+138.97% Net Return)
+- **Annualized Return (CAGR):** **+19.03% p.a.**
+- **Profit Factor:** **1.63**
+- **Max Drawdown:** **-24.84%** (experienced during the broad 2022 global market correction)
+- **Sharpe Ratio ($R_f=6.5\%$):** **0.63** | **Sortino Ratio:** **0.80** | **Calmar Ratio:** **0.77**
+- **Trades Executed:** 207 (82 Wins / 125 Losses)
+- **Win Rate:** **39.6%** | **Win/Loss Ratio:** **2.92x** (+23.93% average winner vs -8.19% average loser)
+- **Average Holding Period:** 62.0 days
+
+#### 2. MAE / MFE (Maximum Adverse & Favorable Excursion) Insights
+- **Average Peak Profit (MFE) on Winners:** **+49.30%** (Realized: **+23.93%**)
+- **Exit Capture Efficiency:** **40.4%** (Trailing 20-day low preserves multi-hundred percent runs while systematically locking profits on momentum exhaustion).
+- **Average Adverse Drawdown (MAE) on Winners:** **-4.32%**
+- **Deepest Drawdown (Max MAE) in a Winner:** **-15.61%** (Gap-down recovery)
+- **Adverse Drawdown Distribution on Winners:**
+  - `0% to -2%`: 24.4% (Immediate launch)
+  - `-2% to -4%`: 29.3% (Mild noise)
+  - `-4% to -6%`: 24.4% (Standard consolidation)
+  - `-6% to -8%`: 22.0% (Deep retest of breakout level before secular markup)
+- **Conclusion:** The -8% hard loss stop provides optimal breathing room: tighter stops (e.g., -4% or -5%) would chop out over **46% of all eventual mega-winners** (`TITAGARH` +240%, `OIL` +175%, `POWERINDIA` +54%, `WELCORP` +68%).
+
+#### 3. 12-Month Performance (Nov 2025 – Nov 2026)
 - **12-Month Return:** **+42.98%** (Ending Equity: ₹1,42,975 on ₹1,00,000)
 - **2026 YTD Return:** **+40.54%** (Ending Equity: ₹1,40,540 on ₹1,00,000)
 - **Max Drawdown:** **-10.82%**

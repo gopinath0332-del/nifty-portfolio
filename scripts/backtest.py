@@ -49,6 +49,11 @@ class SimTrade:
     pnl_pct: float
     holding_days: int
     exit_reason: str
+    mfe_pct: float = 0.0
+    mae_pct: float = 0.0
+    mfe_pnl: float = 0.0
+    mae_pnl: float = 0.0
+    capture_ratio: float = 0.0
 
 
 class PortfolioBacktester:
@@ -193,6 +198,14 @@ class PortfolioBacktester:
                         pnl_pct = (pnl / pos["invested"]) * 100.0
                         holding_days = (current_dt - pos["entry_dt"]).days
 
+                        peak_h = max(pos.get("peak_high", pos["entry_price"]), open_px)
+                        trough_l = min(pos.get("trough_low", pos["entry_price"]), open_px)
+                        mfe_pct = ((peak_h - pos["entry_price"]) / pos["entry_price"]) * 100.0
+                        mae_pct = ((trough_l - pos["entry_price"]) / pos["entry_price"]) * 100.0
+                        mfe_pnl = (peak_h - pos["entry_price"]) * pos["qty"]
+                        mae_pnl = (trough_l - pos["entry_price"]) * pos["qty"]
+                        capture_ratio = (pnl / mfe_pnl * 100.0) if mfe_pnl > 0 and pnl > 0 else 0.0
+
                         cash += exit_val
                         closed_trades.append(
                             SimTrade(
@@ -208,6 +221,11 @@ class PortfolioBacktester:
                                 pnl_pct=pnl_pct,
                                 holding_days=holding_days,
                                 exit_reason=reason,
+                                mfe_pct=round(mfe_pct, 2),
+                                mae_pct=round(mae_pct, 2),
+                                mfe_pnl=round(mfe_pnl, 2),
+                                mae_pnl=round(mae_pnl, 2),
+                                capture_ratio=round(capture_ratio, 1),
                             )
                         )
             pending_exits.clear()
@@ -273,6 +291,8 @@ class PortfolioBacktester:
                             "entry_dt": current_dt,
                             "invested": invested,
                             "industry": sec,
+                            "peak_high": open_px,
+                            "trough_low": open_px,
                         }
                         available_slots -= 1
             pending_entries.clear()
@@ -328,7 +348,10 @@ class PortfolioBacktester:
             open_pos_value = 0.0
             for sym, pos in positions.items():
                 if sym in stock_date_maps and current_dt in stock_date_maps[sym].index:
-                    c = float(stock_date_maps[sym].loc[current_dt]["close"])
+                    row_stk = stock_date_maps[sym].loc[current_dt]
+                    pos["peak_high"] = max(pos.get("peak_high", pos["entry_price"]), float(row_stk["high"]))
+                    pos["trough_low"] = min(pos.get("trough_low", pos["entry_price"]), float(row_stk["low"]))
+                    c = float(row_stk["close"])
                     open_pos_value += c * pos["qty"]
                 else:
                     open_pos_value += pos["invested"]
@@ -380,6 +403,24 @@ class PortfolioBacktester:
         best_trade = max(closed_trades, key=lambda t: t.pnl_pct) if closed_trades else None
         worst_trade = min(closed_trades, key=lambda t: t.pnl_pct) if closed_trades else None
 
+        # MAE and MFE Metrics
+        avg_mae_all = float(np.mean([t.mae_pct for t in closed_trades])) if closed_trades else 0.0
+        avg_mae_win = float(np.mean([t.mae_pct for t in wins])) if wins else 0.0
+        avg_mae_loss = float(np.mean([t.mae_pct for t in losses])) if losses else 0.0
+
+        avg_mfe_all = float(np.mean([t.mfe_pct for t in closed_trades])) if closed_trades else 0.0
+        avg_mfe_win = float(np.mean([t.mfe_pct for t in wins])) if wins else 0.0
+        avg_mfe_loss = float(np.mean([t.mfe_pct for t in losses])) if losses else 0.0
+
+        avg_capture_ratio = float(np.mean([t.capture_ratio for t in wins])) if wins else 0.0
+        max_mae_winner = min([t.mae_pct for t in wins]) if wins else 0.0
+
+        # Distribution of MAE in winning trades
+        mae_win_under_2 = sum(1 for t in wins if t.mae_pct >= -2.0)
+        mae_win_2_to_4 = sum(1 for t in wins if -4.0 <= t.mae_pct < -2.0)
+        mae_win_4_to_6 = sum(1 for t in wins if -6.0 <= t.mae_pct < -4.0)
+        mae_win_over_6 = sum(1 for t in wins if t.mae_pct < -6.0)
+
         # Monthly returns
         df_monthly = df_eq["equity"].resample("ME").last().to_frame()
         df_monthly["prev"] = df_monthly["equity"].shift(1).fillna(self.initial_capital)
@@ -392,6 +433,7 @@ class PortfolioBacktester:
             "ending_equity": ending_equity,
             "net_profit": ending_equity - self.initial_capital,
             "total_return_pct": total_return_pct,
+            "cagr_pct": ann_return,
             "max_drawdown_pct": max_drawdown_pct,
             "max_drawdown_amount": max_drawdown_amount,
             "sharpe_ratio": sharpe_ratio,
@@ -413,6 +455,18 @@ class PortfolioBacktester:
             "avg_holding_days": avg_holding,
             "best_trade": best_trade,
             "worst_trade": worst_trade,
+            "avg_mae_all": avg_mae_all,
+            "avg_mae_win": avg_mae_win,
+            "avg_mae_loss": avg_mae_loss,
+            "avg_mfe_all": avg_mfe_all,
+            "avg_mfe_win": avg_mfe_win,
+            "avg_mfe_loss": avg_mfe_loss,
+            "avg_capture_ratio": avg_capture_ratio,
+            "max_mae_winner": max_mae_winner,
+            "mae_win_under_2": mae_win_under_2,
+            "mae_win_2_to_4": mae_win_2_to_4,
+            "mae_win_4_to_6": mae_win_4_to_6,
+            "mae_win_over_6": mae_win_over_6,
             "closed_trades": closed_trades,
             "open_positions": positions,
             "equity_df": df_eq,
@@ -431,6 +485,7 @@ def print_backtest_report(res: Dict) -> None:
         ["Ending Portfolio Value", f"₹{res['ending_equity']:,.2f}"],
         ["Net Profit (₹)", f"₹{res['net_profit']:+,.2f}"],
         ["Total Return (%)", f"{res['total_return_pct']:+.2f}%"],
+        ["Annualized Return (CAGR)", f"{res.get('cagr_pct', 0.0):+.2f}%"],
         ["Max Drawdown (%)", f"{res['max_drawdown_pct']:.2f}% (₹{res['max_drawdown_amount']:,.2f})"],
         ["Sharpe Ratio (Rf=6.5%)", f"{res.get('sharpe_ratio', 0.0):.2f}"],
         ["Sortino Ratio", f"{res.get('sortino_ratio', 0.0):.2f}"],
@@ -448,6 +503,30 @@ def print_backtest_report(res: Dict) -> None:
         ["Average Holding Period", f"{res['avg_holding_days']:.1f} days"],
     ]
     print(tabulate(perf_data, tablefmt="fancy_grid"))
+
+    # MAE / MFE Analysis
+    mae_mfe_data = [
+        ["Average Peak Profit (MFE) — Winners", f"+{res.get('avg_mfe_win', 0.0):.2f}%"],
+        ["Average Realized Profit — Winners", f"+{res['avg_win_pct']:.2f}%"],
+        ["Exit Capture Efficiency (Realized / Peak MFE)", f"{res.get('avg_capture_ratio', 0.0):.1f}%"],
+        ["Average Drawdown (MAE) — Winners", f"{res.get('avg_mae_win', 0.0):.2f}%"],
+        ["Deepest Drawdown (Max MAE) in a Winning Trade", f"{res.get('max_mae_winner', 0.0):.2f}%"],
+        ["Average Peak Profit (MFE) — Losers", f"+{res.get('avg_mfe_loss', 0.0):.2f}%"],
+        ["Average Drawdown (MAE) — Losers", f"{res.get('avg_mae_loss', 0.0):.2f}%"],
+    ]
+    print("\n🎯 MAE / MFE (MAX ADVERSE & FAVORABLE EXCURSION) ANALYSIS:")
+    print(tabulate(mae_mfe_data, headers=["Metric", "Value"], tablefmt="grid"))
+
+    # MAE Distribution on Winners
+    total_wins = max(res["winning_trades"], 1)
+    mae_dist = [
+        ["0% to -2% (Virtually No Drawdown)", f"{res.get('mae_win_under_2', 0)} trades ({res.get('mae_win_under_2', 0)/total_wins*100:.1f}%)"],
+        ["-2% to -4% (Mild Pullback)", f"{res.get('mae_win_2_to_4', 0)} trades ({res.get('mae_win_2_to_4', 0)/total_wins*100:.1f}%)"],
+        ["-4% to -6% (Normal Consolidation)", f"{res.get('mae_win_4_to_6', 0)} trades ({res.get('mae_win_4_to_6', 0)/total_wins*100:.1f}%)"],
+        ["-6% to -8% (Deep Retest Near Stop)", f"{res.get('mae_win_over_6', 0)} trades ({res.get('mae_win_over_6', 0)/total_wins*100:.1f}%)"],
+    ]
+    print("\n📉 WINNER ADVERSE DRAWDOWN (MAE) DISTRIBUTION:")
+    print(tabulate(mae_dist, headers=["Adverse Excursion (MAE) Range", "Winning Trades Count (%)"], tablefmt="grid"))
 
     if res["best_trade"]:
         bt = res["best_trade"]
@@ -468,10 +547,10 @@ def print_backtest_report(res: Dict) -> None:
     print("\n🏆 TOP 10 WINNING TRADES:")
     top_trades = sorted(res["closed_trades"], key=lambda t: t.pnl, reverse=True)[:10]
     top_rows = [
-        [t.symbol, t.entry_date, t.exit_date, f"₹{t.entry_price:.1f}", f"₹{t.exit_price:.1f}", t.quantity, f"₹{t.pnl:+,.1f}", f"{t.pnl_pct:+.1f}%", f"{t.holding_days}d"]
+        [t.symbol, t.entry_date, t.exit_date, f"₹{t.entry_price:.1f}", f"₹{t.exit_price:.1f}", t.quantity, f"₹{t.pnl:+,.1f}", f"{t.pnl_pct:+.1f}%", f"+{t.mfe_pct:.1f}%", f"{t.mae_pct:.1f}%", f"{t.holding_days}d"]
         for t in top_trades
     ]
-    print(tabulate(top_rows, headers=["Symbol", "Entry", "Exit", "Buy Px", "Sell Px", "Qty", "P&L (₹)", "P&L (%)", "Days"], tablefmt="grid"))
+    print(tabulate(top_rows, headers=["Symbol", "Entry", "Exit", "Buy Px", "Sell Px", "Qty", "P&L (₹)", "P&L (%)", "Peak MFE", "Deep MAE", "Days"], tablefmt="grid"))
     print("=" * 70 + "\n")
 
 
