@@ -18,7 +18,7 @@ from scripts.backtest import PortfolioBacktester
 from src.config import load_config
 
 
-def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (with Market Regime Filter)") -> str:
+def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (Turtle System 2: 50-Day High Breakout)") -> str:
     cfg = load_config()
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,

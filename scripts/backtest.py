@@ -59,7 +59,7 @@ class PortfolioBacktester:
         max_positions: int = 10,
         max_per_sector: int = 2,
         within_52w_pct: float = 10.0,
-        entry_len: int = 20,
+        entry_len: int = 50,
         exit_len: int = 20,
         use_market_regime: bool = True,
         index_ema_len: int = 50,

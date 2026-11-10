@@ -26,11 +26,12 @@ class CapitalConfig:
     position_size: float = 20000.0
     max_positions: int = 10
     max_per_sector: int = 2
+    dynamic_compounding: bool = False
 
 
 @dataclass
 class StrategyConfig:
-    entry_len: int = 20
+    entry_len: int = 50
     exit_len: int = 20
     enable_atr_stop: bool = False
     max_loss_stop_pct: float = 8.0
@@ -152,9 +153,10 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             position_size=float(capital_data.get("position_size", 20000.0)),
             max_positions=int(capital_data.get("max_positions", 10)),
             max_per_sector=int(capital_data.get("max_per_sector", 2)),
+            dynamic_compounding=bool(capital_data.get("dynamic_compounding", False)),
         ),
         strategy=StrategyConfig(
-            entry_len=int(strategy_data.get("entry_len", 20)),
+            entry_len=int(strategy_data.get("entry_len", 50)),
             exit_len=int(strategy_data.get("exit_len", 20)),
             enable_atr_stop=bool(strategy_data.get("enable_atr_stop", False)),
             max_loss_stop_pct=float(strategy_data.get("max_loss_stop_pct", 8.0)),
