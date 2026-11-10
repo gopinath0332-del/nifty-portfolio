@@ -67,6 +67,7 @@ class PortfolioBacktester:
         sizing_mode: str = "risk_pct",
         risk_per_trade_pct: float = 1.25,
         max_position_size_pct: float = 15.0,
+        use_stage_2: bool = True,
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
     ):
@@ -83,6 +84,7 @@ class PortfolioBacktester:
         self.sizing_mode = sizing_mode
         self.risk_per_trade_pct = risk_per_trade_pct
         self.max_position_size_pct = max_position_size_pct
+        self.use_stage_2 = use_stage_2
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
@@ -292,12 +294,13 @@ class PortfolioBacktester:
                 low_20_prev = float(row.get(f"low_{self.exit_len}_prev", 0))
                 dist_52w = float(row.get("dist_52w_high_pct", -999))
                 rvol = float(row.get("rvol", 1.0))
+                is_stage_2 = bool(row.get("is_stage_2", False))
 
                 # 1. Check Exit for active positions (always evaluate exits regardless of regime)
                 if sym in positions:
                     entry_px = positions[sym]["entry_price"]
                     if close < low_20_prev:
-                        pending_exits[sym] = "20-Day Low Breakdown"
+                        pending_exits[sym] = f"{self.exit_len}-Day Low Breakdown"
                     elif self.max_loss_pct > 0 and close <= entry_px * (1.0 - self.max_loss_pct / 100.0):
                         pending_exits[sym] = f"Hard Stop (-{self.max_loss_pct:.0f}%)"
 
@@ -306,8 +309,9 @@ class PortfolioBacktester:
                     is_breakout = close > high_20_prev
                     passes_52w = dist_52w >= -self.within_52w_pct
                     is_liquid = close >= 20.0 and float(row.get("vol_sma_20", 0)) >= 50000
+                    passes_stage2 = is_stage_2 if self.use_stage_2 else True
 
-                    if is_breakout and passes_52w and is_liquid:
+                    if is_breakout and passes_52w and is_liquid and passes_stage2 and high_20_prev > 0:
                         breakout_pct = ((close - high_20_prev) / high_20_prev) * 100.0
                         score = breakout_pct * max(rvol, 0.1)
                         todays_candidates.append((sym, close, score, low_20_prev))
@@ -342,6 +346,19 @@ class PortfolioBacktester:
         max_drawdown_pct = df_eq["drawdown"].min()
         max_drawdown_amount = (df_eq["peak"] - df_eq["equity"]).max()
 
+        # Sharpe, Sortino, and Calmar Ratios (Rf = 6.5% annual)
+        daily_returns = df_eq["equity"].pct_change().dropna()
+        rf_daily = (1.0 + 0.065) ** (1.0 / 252.0) - 1.0
+        excess_returns = daily_returns - rf_daily
+        sharpe_ratio = float(excess_returns.mean() / excess_returns.std() * np.sqrt(252.0)) if excess_returns.std() > 0 else 0.0
+
+        downside = excess_returns[excess_returns < 0]
+        sortino_ratio = float(excess_returns.mean() / downside.std() * np.sqrt(252.0)) if len(downside) > 0 and downside.std() > 0 else 0.0
+
+        n_days = max(len(df_eq), 1)
+        ann_return = ((ending_equity / self.initial_capital) ** (252.0 / n_days) - 1.0) * 100.0
+        calmar_ratio = abs(ann_return / max_drawdown_pct) if max_drawdown_pct != 0 else 0.0
+
         # Trade metrics
         total_trades = len(closed_trades)
         wins = [t for t in closed_trades if t.pnl > 0]
@@ -375,6 +392,10 @@ class PortfolioBacktester:
             "total_return_pct": total_return_pct,
             "max_drawdown_pct": max_drawdown_pct,
             "max_drawdown_amount": max_drawdown_amount,
+            "sharpe_ratio": sharpe_ratio,
+            "sortino_ratio": sortino_ratio,
+            "calmar_ratio": calmar_ratio,
+            "use_stage_2": self.use_stage_2,
             "total_trades": total_trades,
             "winning_trades": len(wins),
             "losing_trades": len(losses),
@@ -408,6 +429,10 @@ def print_backtest_report(res: Dict) -> None:
         ["Net Profit (₹)", f"₹{res['net_profit']:+,.2f}"],
         ["Total Return (%)", f"{res['total_return_pct']:+.2f}%"],
         ["Max Drawdown (%)", f"{res['max_drawdown_pct']:.2f}% (₹{res['max_drawdown_amount']:,.2f})"],
+        ["Sharpe Ratio (Rf=6.5%)", f"{res.get('sharpe_ratio', 0.0):.2f}"],
+        ["Sortino Ratio", f"{res.get('sortino_ratio', 0.0):.2f}"],
+        ["Calmar Ratio", f"{res.get('calmar_ratio', 0.0):.2f}"],
+        ["Stage 2 Trend Filter", "ENABLED (Price > 50 EMA > 200 SMA)" if res.get("use_stage_2") else "DISABLED"],
         ["Profit Factor", f"{res['profit_factor']:.2f}"],
         ["Total Closed Trades", f"{res['total_trades']}"],
         ["Winning Trades", f"{res['winning_trades']} ({res['win_rate']:.1f}%)"],
@@ -454,10 +479,12 @@ def main() -> None:
     parser.add_argument("--no-regime", action="store_true", help="Disable Nifty 500 Market Regime Filter")
     parser.add_argument("--max-loss", type=float, default=8.0, help="Maximum loss stop pct (default: 8.0)")
     parser.add_argument("--max-per-sector", type=int, default=None, help="Max stocks per sector (default: from settings.yaml)")
+    parser.add_argument("--no-stage-2", action="store_true", help="Disable Stage 2 Trend Filter (Price > 50 EMA > 200 SMA)")
     args = parser.parse_args()
 
     cfg = load_config()
     sector_limit = args.max_per_sector if args.max_per_sector is not None else cfg.capital.max_per_sector
+    use_stage_2 = not args.no_stage_2 if args.no_stage_2 else getattr(cfg.filters, "stage_2_trend_enabled", True)
 
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
@@ -473,6 +500,7 @@ def main() -> None:
         sizing_mode=cfg.capital.sizing_mode,
         risk_per_trade_pct=cfg.capital.risk_per_trade_pct,
         max_position_size_pct=cfg.capital.max_position_size_pct,
+        use_stage_2=use_stage_2,
         start_date=args.start,
         end_date=args.end,
     )

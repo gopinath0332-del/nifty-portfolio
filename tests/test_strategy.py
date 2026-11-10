@@ -186,3 +186,16 @@ def test_sector_diversification_tracking():
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
+
+def test_stage_2_trend_filter():
+    df = create_synthetic_data(num_bars=210, trend="up")
+    df_ind = compute_indicators(df, entry_len=20, exit_len=20)
+
+    assert "ema_50" in df_ind.columns
+    assert "sma_200" in df_ind.columns
+    assert "is_stage_2" in df_ind.columns
+
+    res = evaluate_breakout_and_exit(df_ind, entry_len=20, exit_len=20, enable_stage_2_filter=True)
+    assert "passes_stage_2" in res
+
+

@@ -241,10 +241,11 @@ class StrategyEngine:
                 exit_len=self.config.strategy.exit_len,
                 within_52w_pct=self.config.filters.within_52w_high_pct,
                 enable_52w_filter=self.config.filters.near_52w_high_enabled,
+                enable_stage_2_filter=getattr(self.config.filters, "stage_2_trend_enabled", False),
             )
 
-            # Filter: Must be a 20-Day Breakout AND pass 52-Week High filter
-            if eval_res.get("is_breakout") and eval_res.get("passes_52w_filter"):
+            # Filter: Must be a Breakout, pass 52-Week High filter, and pass Stage 2 Trend
+            if eval_res.get("is_breakout") and eval_res.get("passes_52w_filter") and eval_res.get("passes_stage_2", True):
                 close = eval_res["close"]
 
                 # Liquidity & Penny Stock Filter

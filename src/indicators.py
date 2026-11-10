@@ -64,6 +64,11 @@ def compute_indicators(
     # Wilder's smoothing (alpha = 1 / atr_len)
     out[f"atr_{atr_len}"] = tr.ewm(alpha=1.0 / atr_len, min_periods=atr_len, adjust=False).mean()
 
+    # 5. Stage 2 Trend Filter: 50 EMA and 200 SMA (Price > 50 EMA > 200 SMA)
+    out["ema_50"] = out["close"].ewm(span=50, adjust=False).mean()
+    out["sma_200"] = out["close"].rolling(window=200, min_periods=min(100, len(out))).mean()
+    out["is_stage_2"] = (out["close"] > out["ema_50"]) & (out["ema_50"] > out["sma_200"])
+
     return out
 
 
@@ -73,6 +78,7 @@ def evaluate_breakout_and_exit(
     exit_len: int = 20,
     within_52w_pct: float = 15.0,
     enable_52w_filter: bool = True,
+    enable_stage_2_filter: bool = False,
 ) -> dict:
     """
     Evaluate the latest daily candle for Breakout Entry and Channel Exit signals.
@@ -92,6 +98,8 @@ def evaluate_breakout_and_exit(
             'is_breakout': bool,
             'is_channel_exit': bool,
             'passes_52w_filter': bool,
+            'is_stage_2': bool,
+            'passes_stage_2': bool,
             'breakout_pct': float,
             'composite_score': float,
         }
@@ -109,24 +117,28 @@ def evaluate_breakout_and_exit(
     dist_52w_pct = float(latest["dist_52w_high_pct"])
     rvol = float(latest["rvol"])
     vol_sma_20 = float(latest["vol_sma_20"])
+    is_stage_2 = bool(latest.get("is_stage_2", False))
 
-    # 1. Breakout condition: Close > 20-day High[1]
+    # 1. Breakout condition: Close > entry_len-day High[1]
     is_breakout = close > high_20_prev
 
-    # 2. Channel Exit condition: Close < 20-day Low[1]
+    # 2. Channel Exit condition: Close < exit_len-day Low[1]
     is_channel_exit = close < low_20_prev
 
-    # 3. 52-Week High filter: Close within 15% of 52W High (i.e. dist_52w_pct >= -15.0%)
+    # 3. 52-Week High filter: Close within 10-15% of 52W High (i.e. dist_52w_pct >= -within_52w_pct)
     passes_52w_filter = True
     if enable_52w_filter:
         passes_52w_filter = dist_52w_pct >= -within_52w_pct
 
-    # 4. Breakout % above 20-day high
+    # 4. Stage 2 Trend Filter: Price > 50 EMA > 200 SMA
+    passes_stage_2 = is_stage_2 if enable_stage_2_filter else True
+
+    # 5. Breakout % above entry_len-day high
     breakout_pct = 0.0
     if is_breakout and high_20_prev > 0:
         breakout_pct = ((close - high_20_prev) / high_20_prev) * 100.0
 
-    # 5. Composite Ranking Score: Breakout% * RVOL
+    # 6. Composite Ranking Score: Breakout% * RVOL
     # Higher score = stronger breakout conviction & institutional volume
     composite_score = breakout_pct * max(rvol, 0.1)
 
@@ -142,6 +154,8 @@ def evaluate_breakout_and_exit(
         "is_breakout": is_breakout,
         "is_channel_exit": is_channel_exit,
         "passes_52w_filter": passes_52w_filter,
+        "is_stage_2": is_stage_2,
+        "passes_stage_2": passes_stage_2,
         "breakout_pct": breakout_pct,
         "composite_score": composite_score,
     }

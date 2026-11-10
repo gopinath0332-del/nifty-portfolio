@@ -18,7 +18,7 @@ from scripts.backtest import PortfolioBacktester
 from src.config import load_config
 
 
-def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (Turtle System 2: 50-Day High Breakout)") -> str:
+def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (Turtle System 2 + Stage 2 Filter)") -> str:
     cfg = load_config()
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
@@ -34,6 +34,7 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
         sizing_mode=cfg.capital.sizing_mode,
         risk_per_trade_pct=cfg.capital.risk_per_trade_pct,
         max_position_size_pct=cfg.capital.max_position_size_pct,
+        use_stage_2=getattr(cfg.filters, "stage_2_trend_enabled", True),
         start_date=start_date,
     )
 
@@ -234,13 +235,16 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
         <!-- Header -->
         <div class="header">
             <div>
-                <h1>Nifty 500 Donchian Breakout — {title_suffix}</h1>
-                <p>Simulated Period: {res['start_date']} to {res['end_date']} | Universe: Nifty 500 Stocks | Sizing: ₹20,000 / stock (Max 10)</p>
+                <h1>Nifty 500 — {title_suffix}</h1>
+                <p>Simulated Period: {res['start_date']} to {res['end_date']} | Universe: Nifty 500 Stocks | Sizing: 1.25% Risk / Trade (Max 15% Cap, 10 Slots)</p>
                 <div style="margin-top: 10px;">
-                    <span class="rules-badge">Strategy: 20D High Breakout</span>
+                    <span class="rules-badge">Strategy: 50D High Breakout</span>
                     <span class="rules-badge">Filter: ≤10% of 52W High</span>
+                    <span class="rules-badge">Stage 2: Price > 50 EMA > 200 SMA</span>
                     <span class="rules-badge">Exit: 20D Low Channel</span>
-                    <span class="rules-badge">Execution: Next Day Open</span>
+                    <span class="rules-badge">Hard Stop: -8.0%</span>
+                    <span class="rules-badge">Regime: Nifty 500 ≥ 50 EMA</span>
+                    <span class="rules-badge">Diversification: Max 2/Sector</span>
                 </div>
             </div>
             <div style="text-align: right;">
@@ -261,6 +265,16 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
                 <div class="kpi-label">Net Profit</div>
                 <div class="kpi-value text-green">+₹{res['net_profit']:,.2f}</div>
                 <div class="kpi-subtext">Total portfolio earnings</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Sharpe Ratio</div>
+                <div class="kpi-value text-blue">{res.get('sharpe_ratio', 0.0):.2f}</div>
+                <div class="kpi-subtext">Annualized excess return (Rf=6.5%)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Sortino / Calmar</div>
+                <div class="kpi-value">{res.get('sortino_ratio', 0.0):.2f} / {res.get('calmar_ratio', 0.0):.2f}</div>
+                <div class="kpi-subtext">Downside & DD risk-adjusted ratios</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Max Drawdown</div>
@@ -285,7 +299,7 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
             <div class="kpi-card">
                 <div class="kpi-label">Avg Holding Time</div>
                 <div class="kpi-value">{res['avg_holding_days']:.1f} Days</div>
-                <div class="kpi-subtext">~2.5 months per swing trade</div>
+                <div class="kpi-subtext">Swing trend duration</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">Best Trade</div>
