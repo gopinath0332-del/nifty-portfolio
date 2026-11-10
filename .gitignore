@@ -28,3 +28,4 @@ logs/
 .pytest_cache/
 
 data/cache/
+*.html

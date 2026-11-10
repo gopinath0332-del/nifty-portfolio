@@ -120,7 +120,16 @@ python scripts/manage_portfolio.py history
 ./status.sh
 ```
 
-### 4. Test Discord Notifications
+### 4. Backtest & Generate Interactive HTML Report
+```bash
+# Run terminal backtest
+python scripts/backtest.py --start 2026-01-01
+
+# Generate standalone visual HTML report dashboard
+python scripts/generate_html_report.py
+```
+
+### 5. Test Discord Notifications
 ```bash
 python scripts/test_notification.py
 ```
