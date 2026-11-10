@@ -38,6 +38,9 @@ class StrategyConfig:
     exit_len: int = 20
     enable_atr_stop: bool = False
     max_loss_stop_pct: float = 8.0
+    exit_on_stage2_break: bool = True
+    profit_lock_threshold_pct: float = 25.0
+    profit_lock_ema_len: int = 20
     atr_len: int = 14
     atr_mult: float = 2.0
 
@@ -167,6 +170,9 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             exit_len=int(strategy_data.get("exit_len", 20)),
             enable_atr_stop=bool(strategy_data.get("enable_atr_stop", False)),
             max_loss_stop_pct=float(strategy_data.get("max_loss_stop_pct", 8.0)),
+            exit_on_stage2_break=bool(strategy_data.get("exit_on_stage2_break", True)),
+            profit_lock_threshold_pct=float(strategy_data.get("profit_lock_threshold_pct", 25.0)),
+            profit_lock_ema_len=int(strategy_data.get("profit_lock_ema_len", 20)),
             atr_len=int(strategy_data.get("atr_len", 14)),
             atr_mult=float(strategy_data.get("atr_mult", 2.0)),
         ),

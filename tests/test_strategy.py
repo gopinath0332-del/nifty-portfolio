@@ -191,11 +191,26 @@ def test_stage_2_trend_filter():
     df = create_synthetic_data(num_bars=210, trend="up")
     df_ind = compute_indicators(df, entry_len=20, exit_len=20)
 
+    assert "ema_20" in df_ind.columns
     assert "ema_50" in df_ind.columns
     assert "sma_200" in df_ind.columns
     assert "is_stage_2" in df_ind.columns
 
     res = evaluate_breakout_and_exit(df_ind, entry_len=20, exit_len=20, enable_stage_2_filter=True)
     assert "passes_stage_2" in res
+    assert "ema_20" in res
+    assert "ema_50" in res
+
+
+def test_two_tier_exit_configuration():
+    strat = StrategyConfig(
+        exit_on_stage2_break=True,
+        profit_lock_threshold_pct=25.0,
+        profit_lock_ema_len=20,
+    )
+    assert strat.exit_on_stage2_break is True
+    assert strat.profit_lock_threshold_pct == 25.0
+    assert strat.profit_lock_ema_len == 20
+
 
 

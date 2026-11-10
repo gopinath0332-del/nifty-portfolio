@@ -64,7 +64,8 @@ def compute_indicators(
     # Wilder's smoothing (alpha = 1 / atr_len)
     out[f"atr_{atr_len}"] = tr.ewm(alpha=1.0 / atr_len, min_periods=atr_len, adjust=False).mean()
 
-    # 5. Stage 2 Trend Filter: 50 EMA and 200 SMA (Price > 50 EMA > 200 SMA)
+    # 5. Trend EMAs and 200 SMA (Price > 50 EMA > 200 SMA)
+    out["ema_20"] = out["close"].ewm(span=20, adjust=False).mean()
     out["ema_50"] = out["close"].ewm(span=50, adjust=False).mean()
     out["sma_200"] = out["close"].rolling(window=200, min_periods=min(100, len(out))).mean()
     out["is_stage_2"] = (out["close"] > out["ema_50"]) & (out["ema_50"] > out["sma_200"])
@@ -142,6 +143,9 @@ def evaluate_breakout_and_exit(
     # Higher score = stronger breakout conviction & institutional volume
     composite_score = breakout_pct * max(rvol, 0.1)
 
+    ema_20 = float(latest.get("ema_20", 0.0))
+    ema_50 = float(latest.get("ema_50", 0.0))
+
     return {
         "close": close,
         "volume": volume,
@@ -151,6 +155,8 @@ def evaluate_breakout_and_exit(
         "dist_52w_high_pct": dist_52w_pct,
         "rvol": rvol,
         "vol_sma_20": vol_sma_20,
+        "ema_20": ema_20,
+        "ema_50": ema_50,
         "is_breakout": is_breakout,
         "is_channel_exit": is_channel_exit,
         "passes_52w_filter": passes_52w_filter,

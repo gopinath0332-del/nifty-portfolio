@@ -34,7 +34,9 @@ The system runs an optimized **Turtle System 2** trend-following model with stri
 | **Volume Liquidity** | **20-Day Avg Volume $\ge 50,000$** shares | Ensures institutional liquidity for zero-slippage market execution. |
 | **Ranking Score** | **$\text{Breakout } \% \times \text{RVOL}$** | Breaks ties by prioritizing the strongest price momentum backed by volume. |
 | **Market Regime Filter** | **Nifty 500 Index $\ge 50\text{ EMA}$** | Prevents opening new long positions when the broad market is in a downtrend. |
-| **Channel Exit** | **20-Day Donchian Low** (`exit_len: 20`) | Trailing exit that lets multi-bagger runners compound while protecting profits. |
+| **Profit-Lock Exit (Tier 1)**| **Unrealized Gain $\ge +25\%$ & Close $< 20\text{ EMA}$** (`profit_lock_threshold_pct: 25.0`) | Locks in profits on mature winners at trend exhaustion rather than round-tripping gains. |
+| **Stage 2 Exit (Tier 2)**   | **Close $< 50\text{ EMA}$** (`exit_on_stage2_break: true`) | Systematic structural exit when intermediate Stage 2 uptrend is broken. |
+| **Channel Exit Fallback**  | **20-Day Donchian Low** (`exit_len: 20`) | Fallback trailing exit for channel preservation. |
 | **Hard Loss Stop** | **-8.0% Stop Loss** (`max_loss_stop_pct: 8.0`) | Caps maximum loss per trade if a false breakout reverses immediately. |
 | **Position Sizing** | **Dynamic Risk-Based (1.25% Risk / Trade)** | Position size adapts dynamically: $\text{Qty} = \frac{\text{Equity} \times 1.25\%}{\text{Open} - \text{Stop}}$. |
 | **Position Allocation Cap**| **Max 15% Capital per Stock** (`max_position_size_pct: 15.0`) | Prevents over-concentration in any single stock. |
@@ -103,33 +105,33 @@ nifty-portfolio/
 
 #### 1. 5-Year Historical Performance (June 2021 – June 2026)
 - **Starting Capital:** ₹1,00,000.00
-- **Ending Capital:** **₹2,38,970.50** (+138.97% Net Return)
-- **Annualized Return (CAGR):** **+19.03% p.a.**
-- **Profit Factor:** **1.63**
-- **Max Drawdown:** **-24.84%** (experienced during the broad 2022 global market correction)
-- **Sharpe Ratio ($R_f=6.5\%$):** **0.63** | **Sortino Ratio:** **0.80** | **Calmar Ratio:** **0.77**
-- **Trades Executed:** 207 (82 Wins / 125 Losses)
-- **Win Rate:** **39.6%** | **Win/Loss Ratio:** **2.92x** (+23.93% average winner vs -8.19% average loser)
-- **Average Holding Period:** 62.0 days
+- **Ending Capital:** **₹3,43,441.58** (+243.44% Net Return)
+- **Annualized Return (CAGR):** **+27.99% p.a.**
+- **Profit Factor:** **2.04**
+- **Max Drawdown:** **-19.21%** (reduced from -24.84% via early Stage 2 & Profit Lock exits)
+- **Sharpe Ratio ($R_f=6.5\%$):** **1.03** | **Sortino Ratio:** **1.34** | **Calmar Ratio:** **1.46**
+- **Trades Executed:** 257 (115 Wins / 142 Losses)
+- **Win Rate:** **44.7%** | **Win/Loss Ratio:** **2.74x** (+21.05% average winner vs -7.67% average loser)
+- **Exit Capture Efficiency:** **44.6%**
+- **Average Holding Period:** 49.9 days
 
 #### 2. MAE / MFE (Maximum Adverse & Favorable Excursion) Insights
-- **Average Peak Profit (MFE) on Winners:** **+49.30%** (Realized: **+23.93%**)
-- **Exit Capture Efficiency:** **40.4%** (Trailing 20-day low preserves multi-hundred percent runs while systematically locking profits on momentum exhaustion).
-- **Average Adverse Drawdown (MAE) on Winners:** **-4.32%**
-- **Deepest Drawdown (Max MAE) in a Winner:** **-15.61%** (Gap-down recovery)
+- **Average Peak Profit (MFE) on Winners:** **+38.43%** (Realized: **+21.05%**)
+- **Exit Capture Efficiency:** **44.6%** (Two-tier exit dynamically locks in peak profits when momentum breaks 20 EMA, while allowing Stage 2 trends to compound).
+- **Average Adverse Drawdown (MAE) on Winners:** **-3.93%**
+- **Deepest Drawdown (Max MAE) in a Winner:** **-12.67%**
 - **Adverse Drawdown Distribution on Winners:**
-  - `0% to -2%`: 24.4% (Immediate launch)
-  - `-2% to -4%`: 29.3% (Mild noise)
-  - `-4% to -6%`: 24.4% (Standard consolidation)
-  - `-6% to -8%`: 22.0% (Deep retest of breakout level before secular markup)
-- **Conclusion:** The -8% hard loss stop provides optimal breathing room: tighter stops (e.g., -4% or -5%) would chop out over **46% of all eventual mega-winners** (`TITAGARH` +240%, `OIL` +175%, `POWERINDIA` +54%, `WELCORP` +68%).
+  - `0% to -2%`: 27.8% (Immediate launch)
+  - `-2% to -4%`: 29.6% (Mild noise)
+  - `-4% to -6%`: 22.6% (Standard consolidation)
+  - `-6% to -8%`: 20.0% (Deep retest near stop)
+- **Conclusion:** Young positions need room to consolidate (42.6% of eventual winners dip below -4% MAE). Once in mature profit ($\ge +25\%$), the 20 EMA trailing exit protects accumulated gains.
 
 #### 3. 12-Month Performance (Nov 2025 – Nov 2026)
-- **12-Month Return:** **+42.98%** (Ending Equity: ₹1,42,975 on ₹1,00,000)
-- **2026 YTD Return:** **+40.54%** (Ending Equity: ₹1,40,540 on ₹1,00,000)
-- **Max Drawdown:** **-10.82%**
-- **Annualized Sharpe Ratio ($R_f=6.5\%$):** **1.47 (12M) / 1.73 (2026 YTD)**
-- **Sortino Ratio:** **2.13 (12M) / 2.82 (2026 YTD)**
-- **Profit Factor:** **2.55 (12M) / 3.21 (2026 YTD)**
-- **Win Rate:** **39.0%** | **Win/Loss Payout:** **3.22x** (+20.5% winner vs -6.4% loser)
+- **12-Month Return:** **+48.27%** (Ending Equity: ₹1,48,270 on ₹1,00,000)
+- **Max Drawdown:** **-13.31%**
+- **Annualized Sharpe Ratio ($R_f=6.5\%$):** **1.73**
+- **Sortino Ratio:** **2.83** | **Calmar Ratio:** **3.61**
+- **Profit Factor:** **2.60**
+- **Win Rate:** **42.6%** | **Win/Loss Payout:** **2.88x** (+20.0% winner vs -6.9% loser)
 

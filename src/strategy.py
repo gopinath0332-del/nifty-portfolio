@@ -144,17 +144,43 @@ class StrategyEngine:
                 enable_52w_filter=False,
             )
 
-            # Check Exit: Channel Exit (Close < 20-Day Low[1]) OR Hard Stop (-8%)
+            # Two-Tier Exit Evaluation:
+            # 1. Hard Stop Loss (-8.0%)
+            # 2. Profit Lock: If gain >= +25% and Close < 20 EMA (exhaustion)
+            # 3. Stage 2 Breakdown: Close < 50 EMA
+            # 4. Fallback: Channel Exit (Close < exit_len-Day Low[1])
             close = eval_res["close"]
+            ema_20 = eval_res.get("ema_20", 0.0)
+            ema_50 = eval_res.get("ema_50", 0.0)
+            low_20_prev = eval_res.get("low_20_prev", 0.0)
             is_channel_exit = eval_res.get("is_channel_exit", False)
             max_loss_pct = self.config.strategy.max_loss_stop_pct
             hard_stop_price = pos.entry_price * (1.0 - max_loss_pct / 100.0) if max_loss_pct > 0 else 0.0
             is_hard_stop = close <= hard_stop_price if hard_stop_price > 0 else False
 
-            if is_channel_exit or is_hard_stop:
+            unrealized_pnl_pct = ((close - pos.entry_price) / pos.entry_price) * 100.0
+            profit_thresh = getattr(self.config.strategy, "profit_lock_threshold_pct", 25.0)
+            exit_stage2 = getattr(self.config.strategy, "exit_on_stage2_break", True)
+
+            exit_triggered = False
+            reason = ""
+
+            if is_hard_stop:
+                exit_triggered = True
+                reason = f"Hard Stop Loss Hit (-{max_loss_pct:.0f}%)"
+            elif profit_thresh > 0 and unrealized_pnl_pct >= profit_thresh and ema_20 > 0 and close < ema_20:
+                exit_triggered = True
+                reason = f"Profit Lock (+{unrealized_pnl_pct:.1f}% & Trend Weakened Below 20 EMA)"
+            elif exit_stage2 and ema_50 > 0 and close < ema_50:
+                exit_triggered = True
+                reason = "Stage 2 Trend Breakdown (Close < 50 EMA)"
+            elif is_channel_exit:
+                exit_triggered = True
+                reason = f"{self.config.strategy.exit_len}-Day Low Channel Breakdown"
+
+            if exit_triggered:
                 pnl = round((close - pos.entry_price) * pos.quantity, 2)
-                pnl_pct = round(((close - pos.entry_price) / pos.entry_price) * 100.0, 2)
-                reason = f"Hard Stop Loss Hit (-{max_loss_pct:.0f}%)" if is_hard_stop and not is_channel_exit else "20-Day Low Channel Breakdown"
+                pnl_pct = round(unrealized_pnl_pct, 2)
                 exits.append(
                     ExitSignal(
                         symbol=sym,
@@ -162,7 +188,7 @@ class StrategyEngine:
                         close_price=close,
                         entry_price=pos.entry_price,
                         quantity=pos.quantity,
-                        low_20_level=eval_res["low_20_prev"],
+                        low_20_level=low_20_prev,
                         exit_reason=reason,
                         pnl=pnl,
                         pnl_pct=pnl_pct,

@@ -74,6 +74,9 @@ class PortfolioBacktester:
         max_position_size_pct: float = 15.0,
         use_stage_2: bool = True,
         min_stock_price: float = 100.0,
+        exit_on_stage2_break: bool = True,
+        profit_lock_threshold_pct: float = 25.0,
+        profit_lock_ema_len: int = 20,
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
     ):
@@ -92,6 +95,9 @@ class PortfolioBacktester:
         self.max_position_size_pct = max_position_size_pct
         self.use_stage_2 = use_stage_2
         self.min_stock_price = min_stock_price
+        self.exit_on_stage2_break = exit_on_stage2_break
+        self.profit_lock_threshold_pct = profit_lock_threshold_pct
+        self.profit_lock_ema_len = profit_lock_ema_len
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
@@ -321,10 +327,23 @@ class PortfolioBacktester:
                 # 1. Check Exit for active positions (always evaluate exits regardless of regime)
                 if sym in positions:
                     entry_px = positions[sym]["entry_price"]
-                    if close < low_20_prev:
-                        pending_exits[sym] = f"{self.exit_len}-Day Low Breakdown"
-                    elif self.max_loss_pct > 0 and close <= entry_px * (1.0 - self.max_loss_pct / 100.0):
+                    unrealized_pnl_pct = ((close - entry_px) / entry_px) * 100.0
+                    ema_20 = float(row.get("ema_20", 0))
+                    ema_50 = float(row.get("ema_50", 0))
+
+                    # Two-Tier Exit Logic:
+                    # 1. Hard Stop (-8%)
+                    # 2. Profit Lock: Gain >= +25% and Close < 20 EMA
+                    # 3. Stage 2 Breakdown: Close < 50 EMA
+                    # 4. Fallback: 20-Day Low
+                    if self.max_loss_pct > 0 and close <= entry_px * (1.0 - self.max_loss_pct / 100.0):
                         pending_exits[sym] = f"Hard Stop (-{self.max_loss_pct:.0f}%)"
+                    elif self.profit_lock_threshold_pct > 0 and unrealized_pnl_pct >= self.profit_lock_threshold_pct and ema_20 > 0 and close < ema_20:
+                        pending_exits[sym] = f"Profit Lock (+{unrealized_pnl_pct:.1f}% & Close < {self.profit_lock_ema_len} EMA)"
+                    elif self.exit_on_stage2_break and ema_50 > 0 and close < ema_50:
+                        pending_exits[sym] = "Stage 2 Breakdown (Close < 50 EMA)"
+                    elif close < low_20_prev:
+                        pending_exits[sym] = f"{self.exit_len}-Day Low Breakdown"
 
                 # 2. Check Breakout Entry (ONLY when Nifty 500 is Bullish >= 50 EMA)
                 elif is_market_bullish:
@@ -587,6 +606,9 @@ def main() -> None:
         max_position_size_pct=cfg.capital.max_position_size_pct,
         use_stage_2=use_stage_2,
         min_stock_price=min_stock_price,
+        exit_on_stage2_break=getattr(cfg.strategy, "exit_on_stage2_break", True),
+        profit_lock_threshold_pct=getattr(cfg.strategy, "profit_lock_threshold_pct", 25.0),
+        profit_lock_ema_len=getattr(cfg.strategy, "profit_lock_ema_len", 20),
         start_date=args.start,
         end_date=args.end,
     )

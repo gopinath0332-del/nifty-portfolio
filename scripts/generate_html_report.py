@@ -41,6 +41,9 @@ def generate_html_report(
         max_position_size_pct=cfg.capital.max_position_size_pct,
         use_stage_2=getattr(cfg.filters, "stage_2_trend_enabled", True),
         min_stock_price=getattr(cfg.filters, "min_stock_price", 100.0),
+        exit_on_stage2_break=getattr(cfg.strategy, "exit_on_stage2_break", True),
+        profit_lock_threshold_pct=getattr(cfg.strategy, "profit_lock_threshold_pct", 25.0),
+        profit_lock_ema_len=getattr(cfg.strategy, "profit_lock_ema_len", 20),
         start_date=start_date,
         end_date=end_date,
     )
