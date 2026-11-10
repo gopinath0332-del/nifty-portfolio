@@ -25,7 +25,7 @@ class CapitalConfig:
     total_capital: float = 100000.0
     position_size: float = 10000.0
     max_positions: int = 10
-    max_per_sector: int = 2
+    max_per_sector: int = 3
     dynamic_compounding: bool = False
     sizing_mode: str = "fixed"
     risk_per_trade_pct: float = 1.25

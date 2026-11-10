@@ -9,7 +9,7 @@ capital:
   risk_per_trade_pct: 1.25 # Optimal: Risk 1.25% of portfolio equity per trade (₹1,250 on ₹1,00,000)
   max_position_size_pct: 15.0 # Optimal: Cap single position to max 15% of capital (₹15,000)
   max_positions: 10 # Maximum stocks allowed in portfolio
-  max_per_sector: 2 # Maximum stocks allowed in the same industry/sector
+  max_per_sector: 3 # Maximum stocks allowed in the same industry/sector (Optimal: allows riding 3 leaders in monster thematic trends)
 
 strategy:
   entry_len: 50 # Donchian High Lookback (50 days) - Turtle System 2

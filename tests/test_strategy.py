@@ -171,17 +171,18 @@ def test_sector_diversification_tracking():
     try:
         state_file = os.path.join(temp_dir, "test_state_sec.json")
         cfg = AppConfig(
-            capital=CapitalConfig(total_capital=200000.0, position_size=20000.0, max_positions=10, max_per_sector=2),
+            capital=CapitalConfig(total_capital=200000.0, position_size=20000.0, max_positions=10, max_per_sector=3),
             files=FilesConfig(state_file=state_file),
         )
         pm = PortfolioManager(cfg)
 
         pm.add_position("SBIN", entry_price=600.0, industry="Financial Services")
         pm.add_position("HDFCBANK", entry_price=1500.0, industry="Financial Services")
+        pm.add_position("ICICIBANK", entry_price=1100.0, industry="Financial Services")
         pm.add_position("SUNPHARMA", entry_price=1200.0, industry="Healthcare")
 
         counts = pm.get_sector_counts()
-        assert counts["Financial Services"] == 2
+        assert counts["Financial Services"] == 3
         assert counts["Healthcare"] == 1
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)

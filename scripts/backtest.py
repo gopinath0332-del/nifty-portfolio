@@ -62,7 +62,7 @@ class PortfolioBacktester:
         initial_capital: float = 100000.0,
         position_size: float = 10000.0,
         max_positions: int = 10,
-        max_per_sector: int = 2,
+        max_per_sector: int = 3,
         within_52w_pct: float = 10.0,
         entry_len: int = 50,
         exit_len: int = 20,

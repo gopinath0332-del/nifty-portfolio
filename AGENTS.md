@@ -42,7 +42,7 @@ The system runs an optimized **Turtle System 2** trend-following model with stri
 | **Position Sizing** | **Dynamic Risk-Based (1.25% Risk / Trade)** | Position size adapts dynamically: $\text{Qty} = \frac{\text{Equity} \times 1.25\%}{\text{Open} - \text{Stop}}$. |
 | **Position Allocation Cap**| **Max 15% Capital per Stock** (`max_position_size_pct: 15.0`) | Prevents over-concentration in any single stock. |
 | **Portfolio Capacity** | **Max 10 Concurrent Positions** (`max_positions: 10`) | Maintains optimal portfolio diversification and cash utilization. |
-| **Sector Diversification** | **Max 2 Stocks per Sector** (`max_per_sector: 2`) | Prevents correlated sector blowouts during thematic sell-offs. |
+| **Sector Diversification** | **Max 3 Stocks per Sector** (`max_per_sector: 3`) | Optimal thematic capture: allows riding up to 3 leaders in monster secular themes without correlated contagion. |
 
 ---
 
@@ -106,14 +106,14 @@ nifty-portfolio/
 
 #### 1. 5-Year Historical Performance (June 2021 – June 2026)
 - **Starting Capital:** ₹1,00,000.00
-- **Ending Capital:** **₹3,90,765.58** (+290.77% Net Return)
-- **Annualized Return (CAGR):** **+31.34% p.a.**
-- **Profit Factor:** **2.17**
-- **Max Drawdown:** **-17.19%** (reduced from -24.84% via early Stage 2, Profit Lock, and Tenure rebalance exits)
-- **Sharpe Ratio ($R_f=6.5\%$):** **1.14** | **Sortino Ratio:** **1.42** | **Calmar Ratio:** **1.82**
-- **Trades Executed:** 288 (117 Wins / 171 Losses)
-- **Win Rate:** **40.6%** | **Win/Loss Ratio:** **3.17x** (+21.0% average winner vs -6.0% average loser)
-- **Average Holding Period:** 44.8 days
+- **Ending Capital:** **₹4,85,040.00** (+385.04% Net Return)
+- **Annualized Return (CAGR):** **+37.14% p.a.**
+- **Profit Factor:** **2.54**
+- **Max Drawdown:** **-17.59%**
+- **Sharpe Ratio ($R_f=6.5\%$):** **1.29** | **Sortino Ratio:** **1.60** | **Calmar Ratio:** **2.11**
+- **Trades Executed:** 278 (122 Wins / 156 Losses)
+- **Win Rate:** **43.9%** | **Win/Loss Ratio:** **3.24x** (+21.4% average winner vs -5.8% average loser)
+- **Average Holding Period:** 44.2 days
 
 #### 2. MAE / MFE (Maximum Adverse & Favorable Excursion) Insights
 - **Average Peak Profit (MFE) on Winners:** **+38.43%** (Realized: **+21.05%**)
