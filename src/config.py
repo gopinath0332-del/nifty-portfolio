@@ -98,16 +98,18 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             if alt_path.exists():
                 shared_env = dotenv_values(alt_path)
 
-    # 2. Extract API credentials with fallback to shared env
+    # 2. Extract API credentials:
+    # If KITE_ENV_PATH is provided, prioritize credentials from that shared file
+    # so morning auto_login token updates automatically reflect here.
     kite_api_key = (
-        os.getenv("KITE_API_KEY")
-        or shared_env.get("KITE_API_KEY")
+        shared_env.get("KITE_API_KEY")
+        or os.getenv("KITE_API_KEY")
         or ""
     ).strip()
 
     kite_access_token = (
-        os.getenv("KITE_ACCESS_TOKEN")
-        or shared_env.get("KITE_ACCESS_TOKEN")
+        shared_env.get("KITE_ACCESS_TOKEN")
+        or os.getenv("KITE_ACCESS_TOKEN")
         or ""
     ).strip()
 
