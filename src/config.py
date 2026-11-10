@@ -32,6 +32,7 @@ class StrategyConfig:
     entry_len: int = 20
     exit_len: int = 20
     enable_atr_stop: bool = False
+    max_loss_stop_pct: float = 8.0
     atr_len: int = 14
     atr_mult: float = 2.0
 
@@ -154,6 +155,7 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             entry_len=int(strategy_data.get("entry_len", 20)),
             exit_len=int(strategy_data.get("exit_len", 20)),
             enable_atr_stop=bool(strategy_data.get("enable_atr_stop", False)),
+            max_loss_stop_pct=float(strategy_data.get("max_loss_stop_pct", 8.0)),
             atr_len=int(strategy_data.get("atr_len", 14)),
             atr_mult=float(strategy_data.get("atr_mult", 2.0)),
         ),

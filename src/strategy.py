@@ -144,11 +144,17 @@ class StrategyEngine:
                 enable_52w_filter=False,
             )
 
-            # Check Channel Exit (Close < 20-Day Low[1])
-            if eval_res.get("is_channel_exit"):
-                close = eval_res["close"]
+            # Check Exit: Channel Exit (Close < 20-Day Low[1]) OR Hard Stop (-8%)
+            close = eval_res["close"]
+            is_channel_exit = eval_res.get("is_channel_exit", False)
+            max_loss_pct = self.config.strategy.max_loss_stop_pct
+            hard_stop_price = pos.entry_price * (1.0 - max_loss_pct / 100.0) if max_loss_pct > 0 else 0.0
+            is_hard_stop = close <= hard_stop_price if hard_stop_price > 0 else False
+
+            if is_channel_exit or is_hard_stop:
                 pnl = round((close - pos.entry_price) * pos.quantity, 2)
                 pnl_pct = round(((close - pos.entry_price) / pos.entry_price) * 100.0, 2)
+                reason = f"Hard Stop Loss Hit (-{max_loss_pct:.0f}%)" if is_hard_stop and not is_channel_exit else "20-Day Low Channel Breakdown"
                 exits.append(
                     ExitSignal(
                         symbol=sym,
@@ -157,7 +163,7 @@ class StrategyEngine:
                         entry_price=pos.entry_price,
                         quantity=pos.quantity,
                         low_20_level=eval_res["low_20_prev"],
-                        exit_reason="20-Day Low Channel Breakdown",
+                        exit_reason=reason,
                         pnl=pnl,
                         pnl_pct=pnl_pct,
                     )

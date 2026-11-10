@@ -9,8 +9,9 @@ capital:
 
 strategy:
   entry_len: 20                 # Donchian High Lookback (days)
-  exit_len: 20                  # Donchian Low Lookback (days)
+  exit_len: 20                  # Donchian Low Lookback (days) - Channel exit
   enable_atr_stop: false        # Kept false per requirement (Channel low exit only)
+  max_loss_stop_pct: 8.0        # Hard Maximum Loss Stop (-8.0% from purchase price)
   atr_len: 14                   # ATR period if enabled
   atr_mult: 2.0                 # ATR multiplier if enabled
 
