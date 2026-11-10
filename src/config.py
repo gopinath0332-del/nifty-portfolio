@@ -47,7 +47,7 @@ class FilterConfig:
     near_52w_high_enabled: bool = True
     within_52w_high_pct: float = 10.0
     stage_2_trend_enabled: bool = True
-    min_stock_price: float = 20.0
+    min_stock_price: float = 100.0
     min_20d_avg_volume: int = 50000
 
 

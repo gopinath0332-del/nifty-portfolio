@@ -18,7 +18,7 @@ from scripts.backtest import PortfolioBacktester
 from src.config import load_config
 
 
-def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (Turtle System 2 + Stage 2 Filter)") -> str:
+def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (Turtle System 2 + Stage 2 Filter + Price > ₹100)") -> str:
     cfg = load_config()
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
@@ -35,6 +35,7 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
         risk_per_trade_pct=cfg.capital.risk_per_trade_pct,
         max_position_size_pct=cfg.capital.max_position_size_pct,
         use_stage_2=getattr(cfg.filters, "stage_2_trend_enabled", True),
+        min_stock_price=getattr(cfg.filters, "min_stock_price", 100.0),
         start_date=start_date,
     )
 
@@ -241,6 +242,7 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
                     <span class="rules-badge">Strategy: 50D High Breakout</span>
                     <span class="rules-badge">Filter: ≤10% of 52W High</span>
                     <span class="rules-badge">Stage 2: Price > 50 EMA > 200 SMA</span>
+                    <span class="rules-badge">Min Price: ≥ ₹100 (No Penny Stocks)</span>
                     <span class="rules-badge">Exit: 20D Low Channel</span>
                     <span class="rules-badge">Hard Stop: -8.0%</span>
                     <span class="rules-badge">Regime: Nifty 500 ≥ 50 EMA</span>

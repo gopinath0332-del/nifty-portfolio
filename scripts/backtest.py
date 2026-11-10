@@ -68,6 +68,7 @@ class PortfolioBacktester:
         risk_per_trade_pct: float = 1.25,
         max_position_size_pct: float = 15.0,
         use_stage_2: bool = True,
+        min_stock_price: float = 100.0,
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
     ):
@@ -85,6 +86,7 @@ class PortfolioBacktester:
         self.risk_per_trade_pct = risk_per_trade_pct
         self.max_position_size_pct = max_position_size_pct
         self.use_stage_2 = use_stage_2
+        self.min_stock_price = min_stock_price
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
@@ -308,7 +310,7 @@ class PortfolioBacktester:
                 elif is_market_bullish:
                     is_breakout = close > high_20_prev
                     passes_52w = dist_52w >= -self.within_52w_pct
-                    is_liquid = close >= 20.0 and float(row.get("vol_sma_20", 0)) >= 50000
+                    is_liquid = close >= self.min_stock_price and float(row.get("vol_sma_20", 0)) >= 50000
                     passes_stage2 = is_stage_2 if self.use_stage_2 else True
 
                     if is_breakout and passes_52w and is_liquid and passes_stage2 and high_20_prev > 0:
@@ -396,6 +398,7 @@ class PortfolioBacktester:
             "sortino_ratio": sortino_ratio,
             "calmar_ratio": calmar_ratio,
             "use_stage_2": self.use_stage_2,
+            "min_stock_price": self.min_stock_price,
             "total_trades": total_trades,
             "winning_trades": len(wins),
             "losing_trades": len(losses),
@@ -433,6 +436,7 @@ def print_backtest_report(res: Dict) -> None:
         ["Sortino Ratio", f"{res.get('sortino_ratio', 0.0):.2f}"],
         ["Calmar Ratio", f"{res.get('calmar_ratio', 0.0):.2f}"],
         ["Stage 2 Trend Filter", "ENABLED (Price > 50 EMA > 200 SMA)" if res.get("use_stage_2") else "DISABLED"],
+        ["Min Stock Price Filter", f"≥ ₹{res.get('min_stock_price', 100.0):.0f}"],
         ["Profit Factor", f"{res['profit_factor']:.2f}"],
         ["Total Closed Trades", f"{res['total_trades']}"],
         ["Winning Trades", f"{res['winning_trades']} ({res['win_rate']:.1f}%)"],
@@ -480,11 +484,13 @@ def main() -> None:
     parser.add_argument("--max-loss", type=float, default=8.0, help="Maximum loss stop pct (default: 8.0)")
     parser.add_argument("--max-per-sector", type=int, default=None, help="Max stocks per sector (default: from settings.yaml)")
     parser.add_argument("--no-stage-2", action="store_true", help="Disable Stage 2 Trend Filter (Price > 50 EMA > 200 SMA)")
+    parser.add_argument("--min-price", type=float, default=None, help="Minimum stock price (default: from settings.yaml)")
     args = parser.parse_args()
 
     cfg = load_config()
     sector_limit = args.max_per_sector if args.max_per_sector is not None else cfg.capital.max_per_sector
     use_stage_2 = not args.no_stage_2 if args.no_stage_2 else getattr(cfg.filters, "stage_2_trend_enabled", True)
+    min_stock_price = args.min_price if args.min_price is not None else getattr(cfg.filters, "min_stock_price", 100.0)
 
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
@@ -501,6 +507,7 @@ def main() -> None:
         risk_per_trade_pct=cfg.capital.risk_per_trade_pct,
         max_position_size_pct=cfg.capital.max_position_size_pct,
         use_stage_2=use_stage_2,
+        min_stock_price=min_stock_price,
         start_date=args.start,
         end_date=args.end,
     )

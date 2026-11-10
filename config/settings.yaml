@@ -23,7 +23,7 @@ filters:
   near_52w_high_enabled: true # Filter to only trade stocks in strong primary uptrend
   within_52w_high_pct: 10.0 # Stock must be within 10% of its 52-week high (filters deep pullbacks)
   stage_2_trend_enabled: true # Price > 50 EMA > 200 SMA (Stan Weinstein / Mark Minervini Stage 2)
-  min_stock_price: 20.0 # Avoid penny stocks below ₹20
+  min_stock_price: 100.0 # Avoid penny and low-priced stocks below ₹100
   min_20d_avg_volume: 50000 # Minimum 20-day average daily volume for liquidity
 
 market_regime:
