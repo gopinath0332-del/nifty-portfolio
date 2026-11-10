@@ -136,14 +136,52 @@ class PortfolioManager:
         """Number of open stock slots remaining (out of 10)."""
         return max(0, self.max_positions - len(self.positions))
 
-    def calculate_quantity(self, price: float) -> int:
+    def get_total_equity(self) -> float:
+        """Return total portfolio equity (cash + invested amount in open positions)."""
+        invested = sum(pos.invested_amount for pos in self.positions.values())
+        return self.cash_balance + invested
+
+    def calculate_quantity(
+        self,
+        price: float,
+        stop_price: Optional[float] = None,
+        current_equity: Optional[float] = None,
+    ) -> int:
         """
-        Calculate quantity of shares for ₹20,000 position size: floor(20000 / price).
+        Calculate quantity of shares.
+        If sizing_mode == 'risk_pct':
+            Risk Amount = Equity * (risk_per_trade_pct / 100)
+            Risk Per Share = max(price - stop_price, price * 0.02)
+            Quantity = floor(Risk Amount / Risk Per Share)
+            Capped by max_position_size_pct and cash balance.
+        Otherwise:
+            Quantity = floor(position_size / price)
         """
         if price <= 0:
             return 0
-        qty = int(self.position_size // price)
-        return max(0, qty)
+
+        eq = current_equity if current_equity is not None else self.get_total_equity()
+
+        if getattr(self.config.capital, "sizing_mode", "fixed") == "risk_pct":
+            risk_pct = getattr(self.config.capital, "risk_per_trade_pct", 2.0)
+            max_alloc_pct = getattr(self.config.capital, "max_position_size_pct", 20.0)
+
+            # Determine stop distance (capped at max 8% stop)
+            effective_stop = stop_price if stop_price is not None and stop_price > 0 else (price * 0.92)
+            risk_per_share = max(price - effective_stop, price * 0.02)
+
+            risk_budget = eq * (risk_pct / 100.0)
+            qty = int(risk_budget // risk_per_share)
+
+            # Cap by max position allocation (e.g. 20% of equity = ₹20,000 on ₹1,00,000)
+            max_pos_budget = eq * (max_alloc_pct / 100.0)
+            qty = min(qty, int(max_pos_budget // price))
+
+            # Cap by available cash
+            qty = min(qty, int(self.cash_balance // price))
+            return max(0, qty)
+        else:
+            return max(0, int(self.position_size // price))
 
     def get_sector_counts(self) -> Dict[str, int]:
         """Return the count of active positions in each industry/sector."""

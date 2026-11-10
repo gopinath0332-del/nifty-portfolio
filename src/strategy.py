@@ -253,7 +253,9 @@ class StrategyEngine:
                 if eval_res.get("vol_sma_20", 0) < self.config.filters.min_20d_avg_volume:
                     continue
 
-                suggested_qty = self.portfolio.calculate_quantity(close)
+                hard_stop = close * (1.0 - self.config.strategy.max_loss_stop_pct / 100.0)
+                stop_px = max(eval_res.get("low_20_prev", hard_stop), hard_stop)
+                suggested_qty = self.portfolio.calculate_quantity(close, stop_price=stop_px)
                 if suggested_qty <= 0:
                     continue
 

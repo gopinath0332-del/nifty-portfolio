@@ -54,8 +54,8 @@ class SimTrade:
 class PortfolioBacktester:
     def __init__(
         self,
-        initial_capital: float = 200000.0,
-        position_size: float = 20000.0,
+        initial_capital: float = 100000.0,
+        position_size: float = 10000.0,
         max_positions: int = 10,
         max_per_sector: int = 2,
         within_52w_pct: float = 10.0,
@@ -64,6 +64,9 @@ class PortfolioBacktester:
         use_market_regime: bool = True,
         index_ema_len: int = 50,
         max_loss_pct: float = 8.0,
+        sizing_mode: str = "risk_pct",
+        risk_per_trade_pct: float = 1.25,
+        max_position_size_pct: float = 15.0,
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
     ):
@@ -77,6 +80,9 @@ class PortfolioBacktester:
         self.use_market_regime = use_market_regime
         self.index_ema_len = index_ema_len
         self.max_loss_pct = max_loss_pct
+        self.sizing_mode = sizing_mode
+        self.risk_per_trade_pct = risk_per_trade_pct
+        self.max_position_size_pct = max_position_size_pct
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
@@ -205,10 +211,20 @@ class PortfolioBacktester:
             # ---------------------------------------------------------
             # Step B: Execute PENDING ENTRIES at Today's OPEN
             # ---------------------------------------------------------
+            open_pos_val = sum(
+                float(stock_date_maps[s].loc[current_dt]["open"]) * p["qty"]
+                for s, p in positions.items()
+                if s in stock_date_maps and current_dt in stock_date_maps[s].index
+            )
+            current_equity = cash + open_pos_val
+
             available_slots = self.max_positions - len(positions)
-            for sym, _, score in pending_entries:
+            for entry_item in pending_entries:
                 if available_slots <= 0:
                     break
+                sym = entry_item[0]
+                low_20_prev = entry_item[3] if len(entry_item) > 3 else 0.0
+
                 if sym in positions or sym not in stock_date_maps:
                     continue
 
@@ -226,7 +242,20 @@ class PortfolioBacktester:
                     if open_px <= 0:
                         continue
 
-                    qty = int(self.position_size // open_px)
+                    if self.sizing_mode == "risk_pct":
+                        hard_stop_px = open_px * (1.0 - self.max_loss_pct / 100.0)
+                        stop_px = max(low_20_prev, hard_stop_px)
+                        risk_per_share = max(open_px - stop_px, open_px * 0.02)
+                        risk_budget = current_equity * (self.risk_per_trade_pct / 100.0)
+                        qty = int(risk_budget // risk_per_share)
+
+                        # Cap single position allocation
+                        max_alloc = current_equity * (self.max_position_size_pct / 100.0)
+                        qty = min(qty, int(max_alloc // open_px))
+                        qty = min(qty, int(cash // open_px))
+                    else:
+                        qty = int(self.position_size // open_px)
+
                     if qty <= 0:
                         continue
 
@@ -281,7 +310,7 @@ class PortfolioBacktester:
                     if is_breakout and passes_52w and is_liquid:
                         breakout_pct = ((close - high_20_prev) / high_20_prev) * 100.0
                         score = breakout_pct * max(rvol, 0.1)
-                        todays_candidates.append((sym, close, score))
+                        todays_candidates.append((sym, close, score, low_20_prev))
 
             # Rank candidates by composite score and queue for next day open
             todays_candidates.sort(key=lambda x: x[2], reverse=True)
@@ -441,6 +470,9 @@ def main() -> None:
         use_market_regime=not args.no_regime,
         index_ema_len=cfg.market_regime.ema_len,
         max_loss_pct=args.max_loss,
+        sizing_mode=cfg.capital.sizing_mode,
+        risk_per_trade_pct=cfg.capital.risk_per_trade_pct,
+        max_position_size_pct=cfg.capital.max_position_size_pct,
         start_date=args.start,
         end_date=args.end,
     )

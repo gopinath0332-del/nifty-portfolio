@@ -31,6 +31,9 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
         use_market_regime=cfg.market_regime.enabled,
         index_ema_len=cfg.market_regime.ema_len,
         max_loss_pct=8.0,
+        sizing_mode=cfg.capital.sizing_mode,
+        risk_per_trade_pct=cfg.capital.risk_per_trade_pct,
+        max_position_size_pct=cfg.capital.max_position_size_pct,
         start_date=start_date,
     )
 

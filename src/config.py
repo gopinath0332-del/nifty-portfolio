@@ -22,11 +22,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 @dataclass
 class CapitalConfig:
-    total_capital: float = 200000.0
-    position_size: float = 20000.0
+    total_capital: float = 100000.0
+    position_size: float = 10000.0
     max_positions: int = 10
     max_per_sector: int = 2
     dynamic_compounding: bool = False
+    sizing_mode: str = "fixed"
+    risk_per_trade_pct: float = 1.25
+    max_position_size_pct: float = 15.0
 
 
 @dataclass
@@ -149,11 +152,14 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
 
     return AppConfig(
         capital=CapitalConfig(
-            total_capital=float(capital_data.get("total_capital", 200000.0)),
-            position_size=float(capital_data.get("position_size", 20000.0)),
+            total_capital=float(capital_data.get("total_capital", 100000.0)),
+            position_size=float(capital_data.get("position_size", 10000.0)),
             max_positions=int(capital_data.get("max_positions", 10)),
             max_per_sector=int(capital_data.get("max_per_sector", 2)),
             dynamic_compounding=bool(capital_data.get("dynamic_compounding", False)),
+            sizing_mode=str(capital_data.get("sizing_mode", "risk_pct")),
+            risk_per_trade_pct=float(capital_data.get("risk_per_trade_pct", 1.25)),
+            max_position_size_pct=float(capital_data.get("max_position_size_pct", 15.0)),
         ),
         strategy=StrategyConfig(
             entry_len=int(strategy_data.get("entry_len", 50)),
