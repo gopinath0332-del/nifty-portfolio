@@ -74,11 +74,12 @@ class PortfolioBacktester:
         max_position_size_pct: float = 15.0,
         use_stage_2: bool = True,
         min_stock_price: float = 100.0,
+        start_date: str = "2026-01-01",
+        end_date: Optional[str] = None,
         exit_on_stage2_break: bool = True,
         profit_lock_threshold_pct: float = 25.0,
         profit_lock_ema_len: int = 20,
-        start_date: str = "2026-01-01",
-        end_date: Optional[str] = None,
+        max_loss_holding_days: int = 20,
     ):
         self.initial_capital = initial_capital
         self.position_size = position_size
@@ -98,6 +99,7 @@ class PortfolioBacktester:
         self.exit_on_stage2_break = exit_on_stage2_break
         self.profit_lock_threshold_pct = profit_lock_threshold_pct
         self.profit_lock_ema_len = profit_lock_ema_len
+        self.max_loss_holding_days = max_loss_holding_days
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
@@ -186,7 +188,7 @@ class PortfolioBacktester:
         pending_exits = {}   # sym -> reason
         pending_entries = [] # list of (sym, suggested_qty, score)
 
-        for current_dt in sorted_dates:
+        for current_idx, current_dt in enumerate(sorted_dates):
             date_str = current_dt.strftime("%Y-%m-%d")
 
             # ---------------------------------------------------------
@@ -295,6 +297,7 @@ class PortfolioBacktester:
                             "entry_price": open_px,
                             "entry_date": date_str,
                             "entry_dt": current_dt,
+                            "entry_trading_idx": current_idx,
                             "invested": invested,
                             "industry": sec,
                             "peak_high": open_px,
@@ -333,11 +336,16 @@ class PortfolioBacktester:
 
                     # Two-Tier Exit Logic:
                     # 1. Hard Stop (-8%)
-                    # 2. Profit Lock: Gain >= +25% and Close < 20 EMA
-                    # 3. Stage 2 Breakdown: Close < 50 EMA
-                    # 4. Fallback: 20-Day Low
+                    # 2. Tenure Loss Cut (held >= 20 trading days & unrealized loss < 0)
+                    # 3. Profit Lock: Gain >= +25% and Close < 20 EMA
+                    # 4. Stage 2 Breakdown: Close < 50 EMA
+                    # 5. Fallback: 20-Day Low
+                    trading_days_held = current_idx - positions[sym].get("entry_trading_idx", current_idx)
+
                     if self.max_loss_pct > 0 and close <= entry_px * (1.0 - self.max_loss_pct / 100.0):
                         pending_exits[sym] = f"Hard Stop (-{self.max_loss_pct:.0f}%)"
+                    elif self.max_loss_holding_days > 0 and trading_days_held >= self.max_loss_holding_days and unrealized_pnl_pct < 0:
+                        pending_exits[sym] = f"Tenure Loss Cut ({trading_days_held}d held, P&L {unrealized_pnl_pct:.1f}%)"
                     elif self.profit_lock_threshold_pct > 0 and unrealized_pnl_pct >= self.profit_lock_threshold_pct and ema_20 > 0 and close < ema_20:
                         pending_exits[sym] = f"Profit Lock (+{unrealized_pnl_pct:.1f}% & Close < {self.profit_lock_ema_len} EMA)"
                     elif self.exit_on_stage2_break and ema_50 > 0 and close < ema_50:
@@ -609,6 +617,7 @@ def main() -> None:
         exit_on_stage2_break=getattr(cfg.strategy, "exit_on_stage2_break", True),
         profit_lock_threshold_pct=getattr(cfg.strategy, "profit_lock_threshold_pct", 25.0),
         profit_lock_ema_len=getattr(cfg.strategy, "profit_lock_ema_len", 20),
+        max_loss_holding_days=getattr(cfg.strategy, "max_loss_holding_days", 20),
         start_date=args.start,
         end_date=args.end,
     )

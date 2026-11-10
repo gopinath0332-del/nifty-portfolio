@@ -161,6 +161,23 @@ class StrategyEngine:
             unrealized_pnl_pct = ((close - pos.entry_price) / pos.entry_price) * 100.0
             profit_thresh = getattr(self.config.strategy, "profit_lock_threshold_pct", 25.0)
             exit_stage2 = getattr(self.config.strategy, "exit_on_stage2_break", True)
+            max_loss_days = getattr(self.config.strategy, "max_loss_holding_days", 20)
+
+            # Calculate trading days held
+            entry_dt_str = pos.entry_date
+            trading_days_held = 0
+            if "date" in df.columns:
+                try:
+                    df_dates = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d").tolist()
+                    if entry_dt_str in df_dates:
+                        entry_idx = df_dates.index(entry_dt_str)
+                        trading_days_held = len(df_dates) - 1 - entry_idx
+                    else:
+                        entry_dt = pd.to_datetime(entry_dt_str)
+                        calendar_days = (datetime.now() - entry_dt).days
+                        trading_days_held = int(calendar_days * 5 / 7)
+                except Exception:
+                    pass
 
             exit_triggered = False
             reason = ""
@@ -168,6 +185,9 @@ class StrategyEngine:
             if is_hard_stop:
                 exit_triggered = True
                 reason = f"Hard Stop Loss Hit (-{max_loss_pct:.0f}%)"
+            elif max_loss_days > 0 and trading_days_held >= max_loss_days and unrealized_pnl_pct < 0:
+                exit_triggered = True
+                reason = f"Tenure Loss Cut ({trading_days_held}d held, P&L {unrealized_pnl_pct:.1f}%)"
             elif profit_thresh > 0 and unrealized_pnl_pct >= profit_thresh and ema_20 > 0 and close < ema_20:
                 exit_triggered = True
                 reason = f"Profit Lock (+{unrealized_pnl_pct:.1f}% & Trend Weakened Below 20 EMA)"

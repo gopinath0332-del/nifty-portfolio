@@ -207,10 +207,12 @@ def test_two_tier_exit_configuration():
         exit_on_stage2_break=True,
         profit_lock_threshold_pct=25.0,
         profit_lock_ema_len=20,
+        max_loss_holding_days=20,
     )
     assert strat.exit_on_stage2_break is True
     assert strat.profit_lock_threshold_pct == 25.0
     assert strat.profit_lock_ema_len == 20
+    assert strat.max_loss_holding_days == 20
 
 
 
