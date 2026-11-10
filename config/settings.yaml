@@ -3,40 +3,39 @@
 # ============================================================
 
 capital:
-  total_capital: 200000.0       # Total portfolio budget in INR (₹2,00,000)
-  position_size: 20000.0        # Allocation per stock (₹20,000)
-  max_positions: 10             # Maximum stocks allowed in portfolio
-  max_per_sector: 2             # Maximum stocks allowed in the same industry/sector
-  dynamic_compounding: false    # Keep false for steady fixed sizing
+  total_capital: 100000.0 # Total portfolio budget in INR (₹1,00,000)
+  position_size: 10000.0 # Allocation per stock (₹10,000)
+  max_positions: 10 # Maximum stocks allowed in portfolio
+  max_per_sector: 2 # Maximum stocks allowed in the same industry/sector
+  dynamic_compounding: false # Keep false for steady fixed sizing
 
 strategy:
-  entry_len: 50                 # Donchian High Lookback (50 days) - Turtle System 2
-  exit_len: 20                  # Donchian Low Lookback (20 days) - Channel exit
-  enable_atr_stop: false        # Kept false per requirement (Channel low exit only)
-  max_loss_stop_pct: 8.0        # Hard Maximum Loss Stop (-8.0% from purchase price)
-  atr_len: 14                   # ATR period if enabled
-  atr_mult: 2.0                 # ATR multiplier if enabled
+  entry_len: 50 # Donchian High Lookback (50 days) - Turtle System 2
+  exit_len: 20 # Donchian Low Lookback (20 days) - Channel exit
+  enable_atr_stop: false # Kept false per requirement (Channel low exit only)
+  max_loss_stop_pct: 8.0 # Hard Maximum Loss Stop (-8.0% from purchase price)
+  atr_len: 14 # ATR period if enabled
+  atr_mult: 2.0 # ATR multiplier if enabled
 
 filters:
-  near_52w_high_enabled: true   # Filter to only trade stocks in strong primary uptrend
-  within_52w_high_pct: 10.0     # Stock must be within 10% of its 52-week high (filters deep pullbacks)
-  min_stock_price: 20.0         # Avoid penny stocks below ₹20
-  min_20d_avg_volume: 50000     # Minimum 20-day average daily volume for liquidity
+  near_52w_high_enabled: true # Filter to only trade stocks in strong primary uptrend
+  within_52w_high_pct: 10.0 # Stock must be within 10% of its 52-week high (filters deep pullbacks)
+  min_stock_price: 20.0 # Avoid penny stocks below ₹20
+  min_20d_avg_volume: 50000 # Minimum 20-day average daily volume for liquidity
 
 market_regime:
-  enabled: true                 # Only open new breakout positions when Nifty 500 >= 50 EMA
-  index_token: 268041           # Zerodha token for NIFTY 500 index
+  enabled: true # Only open new breakout positions when Nifty 500 >= 50 EMA
+  index_token: 268041 # Zerodha token for NIFTY 500 index
   index_symbol: "NIFTY 500"
-  ema_len: 50                   # EMA period for index trend filter
+  ema_len: 50 # EMA period for index trend filter
 
 execution:
-  schedule_time: "15:45"        # Post-market scan time (HH:MM IST)
+  schedule_time: "15:45" # Post-market scan time (HH:MM IST)
   timezone: "Asia/Kolkata"
-  product_type: "CNC"           # Cash & Carry delivery
+  product_type: "CNC" # Cash & Carry delivery
   exchange: "NSE"
 
 files:
   universe_csv: "data/nifty500.csv"
   state_file: "data/portfolio_state.json"
   cache_dir: "data/cache"
-
