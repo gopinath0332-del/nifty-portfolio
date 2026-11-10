@@ -1,0 +1,11 @@
+[Unit]
+Description=Timer for Nifty 500 Donchian Daily Scanner (Mon-Fri 15:45 IST)
+
+[Timer]
+# Runs at 15:45 IST Monday through Friday
+OnCalendar=Mon..Fri 15:45:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

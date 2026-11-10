@@ -1,0 +1,33 @@
+# ============================================================
+# Strategy & Portfolio Settings
+# ============================================================
+
+capital:
+  total_capital: 200000.0       # Total portfolio budget in INR (₹2,00,000)
+  position_size: 20000.0        # Allocation per stock (₹20,000)
+  max_positions: 10             # Maximum stocks allowed in portfolio
+
+strategy:
+  entry_len: 20                 # Donchian High Lookback (days)
+  exit_len: 20                  # Donchian Low Lookback (days)
+  enable_atr_stop: false        # Kept false per requirement (Channel low exit only)
+  atr_len: 14                   # ATR period if enabled
+  atr_mult: 2.0                 # ATR multiplier if enabled
+
+filters:
+  near_52w_high_enabled: true   # Filter to only trade stocks in strong primary uptrend
+  within_52w_high_pct: 15.0     # Stock must be within 15% of its 52-week high
+  min_stock_price: 20.0         # Avoid penny stocks below ₹20
+  min_20d_avg_volume: 50000     # Minimum 20-day average daily volume for liquidity
+
+execution:
+  schedule_time: "15:45"        # Post-market scan time (HH:MM IST)
+  timezone: "Asia/Kolkata"
+  product_type: "CNC"           # Cash & Carry delivery
+  exchange: "NSE"
+
+files:
+  universe_csv: "data/nifty500.csv"
+  state_file: "data/portfolio_state.json"
+  cache_dir: "data/cache"
+

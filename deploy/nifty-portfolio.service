@@ -1,0 +1,17 @@
+[Unit]
+Description=Nifty 500 Donchian Breakout Daily Scanner
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/nifty-portfolio
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/nifty-portfolio/venv/bin/python /home/pi/nifty-portfolio/scripts/run_daily_scan.py
+StandardOutput=append:/home/pi/nifty-portfolio/logs/daily_scan.log
+StandardError=append:/home/pi/nifty-portfolio/logs/daily_scan_error.log
+
+[Install]
+WantedBy=multi-user.target
+

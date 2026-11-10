@@ -1,0 +1,50 @@
+//@version=5
+strategy(     title = "20-Day High Breakout (Long Only) + ATR Stop",     overlay = true,     pyramiding = 0,     default_qty_type = strategy.percent_of_equity,     default_qty_value = 100)
+
+// ─────────────────── INPUTS ───────────────────
+entryLen   = input.int(20, "Entry Lookback (High)", minval = 1)
+exitLen    = input.int(20, "Exit Lookback (Low)", minval = 1)
+
+useATRStop = input.bool(true, "Enable ATR Stop Loss")
+atrLen     = input.int(14, "ATR Length", minval = 1)
+atrMult    = input.float(2.0, "ATR Multiplier", step = 0.1)
+
+// ─────────────────── CALCULATIONS ───────────────────
+highestHigh = ta.highest(high, entryLen)
+lowestLow   = ta.lowest(low, exitLen)
+
+atrValue = ta.atr(atrLen)
+
+// Entry & Exit Conditions
+longCondition  = close > highestHigh[1]
+exitChannel    = close < lowestLow[1]
+
+// ATR Stop Price (only valid when in position)
+atrStopPrice = strategy.position_size > 0
+     ? strategy.position_avg_price - (atrValue * atrMult)
+     : na
+
+exitATR = useATRStop and strategy.position_size > 0 and close < atrStopPrice
+
+// ─────────────────── STRATEGY EXECUTION ───────────────────
+if longCondition and strategy.position_size == 0
+    strategy.entry("Long", strategy.long)
+
+if strategy.position_size > 0 and (exitChannel or exitATR)
+    strategy.close("Long")
+
+// ─────────────────── ALERTS ───────────────────
+alertcondition(     longCondition and strategy.position_size == 0,     title = "LongEntry",     message = "Long Entry: Price closed above {{input.entryLen}}-day high")
+
+alertcondition(     exitChannel,     title = "Exit – Channel Break", message = "Exit Long: Price closed below {{input.exitLen}}-day low")
+
+alertcondition(     exitATR,     title = "Exit – ATR Stop",     message = "Exit Long: ATR Stop Loss hit")
+
+// ─────────────────── PLOTS ───────────────────
+plot(highestHigh, "Entry High", color=color.green)
+plot(lowestLow, "Exit Low", color=color.red)
+
+plot(     atrStopPrice,     title = "ATR Stop Loss",     color = color.orange,     linewidth = 2,     style = plot.style_linebr)
+
+// Background when in position
+bgcolor(     strategy.position_size > 0 ? color.new(color.green, 90) : na)

@@ -1,0 +1,10 @@
+{
+  "total_capital": 200000.0,
+  "position_size": 20000.0,
+  "max_positions": 10,
+  "cash_balance": 200000.0,
+  "positions": {},
+  "trade_history": [],
+  "last_scan_date": null,
+  "last_updated": null
+}
