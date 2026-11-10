@@ -57,6 +57,7 @@ class PortfolioBacktester:
         initial_capital: float = 200000.0,
         position_size: float = 20000.0,
         max_positions: int = 10,
+        max_per_sector: int = 2,
         within_52w_pct: float = 10.0,
         entry_len: int = 20,
         exit_len: int = 20,
@@ -69,6 +70,7 @@ class PortfolioBacktester:
         self.initial_capital = initial_capital
         self.position_size = position_size
         self.max_positions = max_positions
+        self.max_per_sector = max_per_sector
         self.within_52w_pct = within_52w_pct
         self.entry_len = entry_len
         self.exit_len = exit_len
@@ -77,6 +79,15 @@ class PortfolioBacktester:
         self.max_loss_pct = max_loss_pct
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
+
+        self.symbol_industry_map: Dict[str, str] = {}
+        if os.path.exists("data/nifty500.csv"):
+            try:
+                df_u = pd.read_csv("data/nifty500.csv")
+                for _, r in df_u.iterrows():
+                    self.symbol_industry_map[str(r["Symbol"]).strip()] = str(r["Industry"]).strip()
+            except Exception:
+                pass
 
     def load_universe_data(self, cache_dir: str = "data/cache/daily_candles") -> Dict[str, pd.DataFrame]:
         """Load and precompute indicators for all cached stock candles."""
@@ -201,6 +212,13 @@ class PortfolioBacktester:
                 if sym in positions or sym not in stock_date_maps:
                     continue
 
+                # Sector Diversification Limit Check (Max N stocks per sector)
+                sec = self.symbol_industry_map.get(sym, "Unknown")
+                if self.max_per_sector > 0:
+                    sec_count = sum(1 for p in positions.values() if p.get("industry") == sec)
+                    if sec_count >= self.max_per_sector:
+                        continue
+
                 stk_map = stock_date_maps[sym]
                 if current_dt in stk_map.index:
                     row = stk_map.loc[current_dt]
@@ -221,6 +239,7 @@ class PortfolioBacktester:
                             "entry_date": date_str,
                             "entry_dt": current_dt,
                             "invested": invested,
+                            "industry": sec,
                         }
                         available_slots -= 1
             pending_entries.clear()
@@ -405,13 +424,17 @@ def main() -> None:
     parser.add_argument("--within-52w", type=float, default=10.0, help="52W High threshold pct (default: 10.0)")
     parser.add_argument("--no-regime", action="store_true", help="Disable Nifty 500 Market Regime Filter")
     parser.add_argument("--max-loss", type=float, default=8.0, help="Maximum loss stop pct (default: 8.0)")
+    parser.add_argument("--max-per-sector", type=int, default=None, help="Max stocks per sector (default: from settings.yaml)")
     args = parser.parse_args()
 
     cfg = load_config()
+    sector_limit = args.max_per_sector if args.max_per_sector is not None else cfg.capital.max_per_sector
+
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
         position_size=cfg.capital.position_size,
         max_positions=cfg.capital.max_positions,
+        max_per_sector=sector_limit,
         within_52w_pct=args.within_52w,
         entry_len=cfg.strategy.entry_len,
         exit_len=cfg.strategy.exit_len,

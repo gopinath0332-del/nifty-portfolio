@@ -28,6 +28,7 @@ class Position:
     invested_amount: float
     stop_exit_level: float = 0.0
     notes: str = ""
+    industry: str = ""
 
 
 @dataclass
@@ -89,6 +90,7 @@ class PortfolioManager:
                     invested_amount=float(pos_data["invested_amount"]),
                     stop_exit_level=float(pos_data.get("stop_exit_level", 0.0)),
                     notes=pos_data.get("notes", ""),
+                    industry=pos_data.get("industry", ""),
                 )
 
             self.trade_history = []
@@ -143,6 +145,14 @@ class PortfolioManager:
         qty = int(self.position_size // price)
         return max(0, qty)
 
+    def get_sector_counts(self) -> Dict[str, int]:
+        """Return the count of active positions in each industry/sector."""
+        counts: Dict[str, int] = {}
+        for p in self.positions.values():
+            sec = p.industry or "Unknown"
+            counts[sec] = counts.get(sec, 0) + 1
+        return counts
+
     def add_position(
         self,
         symbol: str,
@@ -151,6 +161,7 @@ class PortfolioManager:
         entry_date: Optional[str] = None,
         stop_exit_level: float = 0.0,
         notes: str = "",
+        industry: str = "",
     ) -> Optional[Position]:
         """Add a newly bought stock to active positions."""
         if symbol in self.positions:
@@ -179,6 +190,7 @@ class PortfolioManager:
             invested_amount=invested,
             stop_exit_level=stop_exit_level,
             notes=notes,
+            industry=industry,
         )
         self.positions[symbol] = pos
         self.cash_balance = max(0.0, self.cash_balance - invested)

@@ -24,6 +24,7 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
         initial_capital=cfg.capital.total_capital,
         position_size=cfg.capital.position_size,
         max_positions=cfg.capital.max_positions,
+        max_per_sector=cfg.capital.max_per_sector,
         within_52w_pct=cfg.filters.within_52w_high_pct,
         entry_len=cfg.strategy.entry_len,
         exit_len=cfg.strategy.exit_len,

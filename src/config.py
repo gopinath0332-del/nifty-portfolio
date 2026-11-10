@@ -25,6 +25,7 @@ class CapitalConfig:
     total_capital: float = 200000.0
     position_size: float = 20000.0
     max_positions: int = 10
+    max_per_sector: int = 2
 
 
 @dataclass
@@ -150,6 +151,7 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             total_capital=float(capital_data.get("total_capital", 200000.0)),
             position_size=float(capital_data.get("position_size", 20000.0)),
             max_positions=int(capital_data.get("max_positions", 10)),
+            max_per_sector=int(capital_data.get("max_per_sector", 2)),
         ),
         strategy=StrategyConfig(
             entry_len=int(strategy_data.get("entry_len", 20)),

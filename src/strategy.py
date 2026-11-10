@@ -277,7 +277,7 @@ class StrategyEngine:
                 )
 
         # ------------------------------------------------------------------
-        # Phase 3: Rank Candidates by Composite Score (Breakout% * RVOL)
+        # Phase 3: Rank Candidates and Enforce Sector Diversification Limit
         # ------------------------------------------------------------------
         # Sort descending by composite score
         breakout_candidates.sort(key=lambda c: c.composite_score, reverse=True)
@@ -285,8 +285,21 @@ class StrategyEngine:
         for i, cand in enumerate(breakout_candidates, 1):
             cand.rank = i
 
-        recommended = breakout_candidates[:effective_open_slots] if effective_open_slots > 0 else []
-        runner_ups = breakout_candidates[effective_open_slots:] if effective_open_slots > 0 else breakout_candidates
+        max_per_sector = self.config.capital.max_per_sector
+        sector_counts = self.portfolio.get_sector_counts()
+
+        recommended: List[EntryCandidate] = []
+        runner_ups: List[EntryCandidate] = []
+
+        for cand in breakout_candidates:
+            cand_sec = cand.industry or "Unknown"
+            cur_sec_count = sector_counts.get(cand_sec, 0)
+
+            if len(recommended) < effective_open_slots and (max_per_sector <= 0 or cur_sec_count < max_per_sector):
+                recommended.append(cand)
+                sector_counts[cand_sec] = cur_sec_count + 1
+            else:
+                runner_ups.append(cand)
 
         logger.info(
             "Scan completed: %d scanned, %d breakouts found, %d recommended entries for %d open slots",

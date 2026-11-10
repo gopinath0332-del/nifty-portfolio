@@ -6,6 +6,7 @@ capital:
   total_capital: 200000.0       # Total portfolio budget in INR (₹2,00,000)
   position_size: 20000.0        # Allocation per stock (₹20,000)
   max_positions: 10             # Maximum stocks allowed in portfolio
+  max_per_sector: 2             # Maximum stocks allowed in the same industry/sector
 
 strategy:
   entry_len: 20                 # Donchian High Lookback (days)
