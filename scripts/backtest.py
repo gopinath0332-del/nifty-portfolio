@@ -60,6 +60,9 @@ class PortfolioBacktester:
         within_52w_pct: float = 10.0,
         entry_len: int = 20,
         exit_len: int = 20,
+        use_market_regime: bool = True,
+        index_ema_len: int = 50,
+        max_loss_pct: float = 8.0,
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
     ):
@@ -69,6 +72,9 @@ class PortfolioBacktester:
         self.within_52w_pct = within_52w_pct
         self.entry_len = entry_len
         self.exit_len = exit_len
+        self.use_market_regime = use_market_regime
+        self.index_ema_len = index_ema_len
+        self.max_loss_pct = max_loss_pct
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
@@ -117,6 +123,21 @@ class PortfolioBacktester:
 
         if not sorted_dates:
             raise ValueError("No trading dates found in the specified backtest range.")
+
+        # Load Nifty 500 Index for Market Regime Filter
+        index_regime_map = {}
+        index_csv = "data/cache/NIFTY500_INDEX.csv"
+
+        if os.path.exists(index_csv) and self.use_market_regime:
+            try:
+                df_idx = pd.read_csv(index_csv)
+                df_idx["dt"] = pd.to_datetime(df_idx["date"]).dt.tz_localize(None)
+                df_idx = df_idx.sort_values("dt").reset_index(drop=True)
+                df_idx["ema_50"] = df_idx["close"].ewm(span=self.index_ema_len, adjust=False).mean()
+                for _, r in df_idx.iterrows():
+                    index_regime_map[r["dt"]] = bool(r["close"] >= r["ema_50"])
+            except Exception as e:
+                print("Warning: Failed loading Nifty 500 index:", e)
 
         # Build quick date -> row lookup per stock
         stock_date_maps = {}
@@ -207,6 +228,10 @@ class PortfolioBacktester:
             # ---------------------------------------------------------
             # Step C: Evaluate TODAY'S SIGNALS on EOD CLOSE
             # ---------------------------------------------------------
+            is_market_bullish = True
+            if self.use_market_regime and index_regime_map:
+                is_market_bullish = index_regime_map.get(current_dt, True)
+
             todays_candidates = []
 
             for sym, df_map in stock_date_maps.items():
@@ -217,18 +242,19 @@ class PortfolioBacktester:
                 close = float(row["close"])
                 high_20_prev = float(row.get(f"high_{self.entry_len}_prev", 0))
                 low_20_prev = float(row.get(f"low_{self.exit_len}_prev", 0))
-                high_52w = float(row.get("high_52w", 0))
                 dist_52w = float(row.get("dist_52w_high_pct", -999))
                 rvol = float(row.get("rvol", 1.0))
 
-                # 1. Check Exit for active positions
+                # 1. Check Exit for active positions (always evaluate exits regardless of regime)
                 if sym in positions:
-                    # Close < 20-Day Low of previous bars
+                    entry_px = positions[sym]["entry_price"]
                     if close < low_20_prev:
                         pending_exits[sym] = "20-Day Low Breakdown"
+                    elif self.max_loss_pct > 0 and close <= entry_px * (1.0 - self.max_loss_pct / 100.0):
+                        pending_exits[sym] = f"Hard Stop (-{self.max_loss_pct:.0f}%)"
 
-                # 2. Check Breakout Entry
-                else:
+                # 2. Check Breakout Entry (ONLY when Nifty 500 is Bullish >= 50 EMA)
+                elif is_market_bullish:
                     is_breakout = close > high_20_prev
                     passes_52w = dist_52w >= -self.within_52w_pct
                     is_liquid = close >= 20.0 and float(row.get("vol_sma_20", 0)) >= 50000
@@ -377,6 +403,8 @@ def main() -> None:
     parser.add_argument("--start", default="2026-01-01", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", default=None, help="End date (YYYY-MM-DD)")
     parser.add_argument("--within-52w", type=float, default=10.0, help="52W High threshold pct (default: 10.0)")
+    parser.add_argument("--no-regime", action="store_true", help="Disable Nifty 500 Market Regime Filter")
+    parser.add_argument("--max-loss", type=float, default=8.0, help="Maximum loss stop pct (default: 8.0)")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -387,6 +415,9 @@ def main() -> None:
         within_52w_pct=args.within_52w,
         entry_len=cfg.strategy.entry_len,
         exit_len=cfg.strategy.exit_len,
+        use_market_regime=not args.no_regime,
+        index_ema_len=cfg.market_regime.ema_len,
+        max_loss_pct=args.max_loss,
         start_date=args.start,
         end_date=args.end,
     )

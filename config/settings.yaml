@@ -20,6 +20,12 @@ filters:
   min_stock_price: 20.0         # Avoid penny stocks below ₹20
   min_20d_avg_volume: 50000     # Minimum 20-day average daily volume for liquidity
 
+market_regime:
+  enabled: true                 # Only open new breakout positions when Nifty 500 >= 50 EMA
+  index_token: 268041           # Zerodha token for NIFTY 500 index
+  index_symbol: "NIFTY 500"
+  ema_len: 50                   # EMA period for index trend filter
+
 execution:
   schedule_time: "15:45"        # Post-market scan time (HH:MM IST)
   timezone: "Asia/Kolkata"

@@ -168,7 +168,41 @@ class StrategyEngine:
         logger.info("Found %d exit signals. Effective open slots for new entries: %d", len(exits), effective_open_slots)
 
         # ------------------------------------------------------------------
-        # Phase 2: Scan Universe for New Breakout Entries
+        # Phase 2: Market Regime Check (Nifty 500 >= 50 EMA)
+        # ------------------------------------------------------------------
+        is_market_bullish = True
+        index_close = 0.0
+        index_ema50 = 0.0
+
+        if self.config.market_regime.enabled:
+            df_idx = self.fetcher.fetch_daily_candles(
+                instrument_token=self.config.market_regime.index_token,
+                symbol="NIFTY_500",
+                days=150,
+                use_cache=use_cache,
+            )
+            if df_idx is not None and len(df_idx) >= self.config.market_regime.ema_len:
+                df_idx["ema_50"] = df_idx["close"].ewm(span=self.config.market_regime.ema_len, adjust=False).mean()
+                index_close = float(df_idx["close"].iloc[-1])
+                index_ema50 = float(df_idx["ema_50"].iloc[-1])
+                is_market_bullish = index_close >= index_ema50
+                logger.info(
+                    "Market Regime Check: Nifty 500 = %.1f | 50 EMA = %.1f | Bullish = %s",
+                    index_close,
+                    index_ema50,
+                    is_market_bullish,
+                )
+
+        if not is_market_bullish:
+            logger.warning(
+                "Nifty 500 is BELOW its 50 EMA (%.1f < %.1f). Market regime is BEARISH. Pausing all new breakout entries to protect capital.",
+                index_close,
+                index_ema50,
+            )
+            stocks_to_scan = []
+
+        # ------------------------------------------------------------------
+        # Phase 3: Scan Universe for New Breakout Entries (If Bullish)
         # ------------------------------------------------------------------
         for stock in stocks_to_scan:
             sym = stock.symbol

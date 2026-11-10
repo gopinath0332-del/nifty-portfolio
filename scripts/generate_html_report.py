@@ -18,7 +18,7 @@ from scripts.backtest import PortfolioBacktester
 from src.config import load_config
 
 
-def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report") -> str:
+def generate_html_report(output_path: str = "backtest_report_2026.html", start_date: str = "2026-01-01", title_suffix: str = "2026 Backtest Report (with Market Regime Filter)") -> str:
     cfg = load_config()
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
@@ -27,6 +27,9 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
         within_52w_pct=cfg.filters.within_52w_high_pct,
         entry_len=cfg.strategy.entry_len,
         exit_len=cfg.strategy.exit_len,
+        use_market_regime=cfg.market_regime.enabled,
+        index_ema_len=cfg.market_regime.ema_len,
+        max_loss_pct=8.0,
         start_date=start_date,
     )
 
@@ -433,9 +436,9 @@ def generate_html_report(output_path: str = "backtest_report_2026.html", start_d
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate Backtest HTML Dashboard")
-    parser.add_argument("--start", default="2024-11-20", help="Start date (YYYY-MM-DD)")
-    parser.add_argument("--out", default="backtest_report_2yr.html", help="Output HTML file path")
-    parser.add_argument("--title", default="2-Year Portfolio Backtest Report (2024-2026)", help="Report title")
+    parser.add_argument("--start", default="2026-01-01", help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--out", default="backtest_report_2026.html", help="Output HTML file path")
+    parser.add_argument("--title", default="2026 Portfolio Backtest (with Nifty 500 Regime Filter)", help="Report title")
     args = parser.parse_args()
 
     generate_html_report(output_path=args.out, start_date=args.start, title_suffix=args.title)

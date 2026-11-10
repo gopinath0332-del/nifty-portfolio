@@ -39,9 +39,17 @@ class StrategyConfig:
 @dataclass
 class FilterConfig:
     near_52w_high_enabled: bool = True
-    within_52w_high_pct: float = 15.0
+    within_52w_high_pct: float = 10.0
     min_stock_price: float = 20.0
     min_20d_avg_volume: int = 50000
+
+
+@dataclass
+class MarketRegimeConfig:
+    enabled: bool = True
+    index_token: int = 268041
+    index_symbol: str = "NIFTY 500"
+    ema_len: int = 50
 
 
 @dataclass
@@ -64,6 +72,7 @@ class AppConfig:
     capital: CapitalConfig = field(default_factory=CapitalConfig)
     strategy: StrategyConfig = field(default_factory=StrategyConfig)
     filters: FilterConfig = field(default_factory=FilterConfig)
+    market_regime: MarketRegimeConfig = field(default_factory=MarketRegimeConfig)
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     files: FilesConfig = field(default_factory=FilesConfig)
 
@@ -131,6 +140,7 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
     capital_data = raw_cfg.get("capital", {})
     strategy_data = raw_cfg.get("strategy", {})
     filter_data = raw_cfg.get("filters", {})
+    regime_data = raw_cfg.get("market_regime", {})
     exec_data = raw_cfg.get("execution", {})
     files_data = raw_cfg.get("files", {})
 
@@ -149,9 +159,15 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
         ),
         filters=FilterConfig(
             near_52w_high_enabled=bool(filter_data.get("near_52w_high_enabled", True)),
-            within_52w_high_pct=float(filter_data.get("within_52w_high_pct", 15.0)),
+            within_52w_high_pct=float(filter_data.get("within_52w_high_pct", 10.0)),
             min_stock_price=float(filter_data.get("min_stock_price", 20.0)),
             min_20d_avg_volume=int(filter_data.get("min_20d_avg_volume", 50000)),
+        ),
+        market_regime=MarketRegimeConfig(
+            enabled=bool(regime_data.get("enabled", True)),
+            index_token=int(regime_data.get("index_token", 268041)),
+            index_symbol=str(regime_data.get("index_symbol", "NIFTY 500")),
+            ema_len=int(regime_data.get("ema_len", 50)),
         ),
         execution=ExecutionConfig(
             schedule_time=str(exec_data.get("schedule_time", "15:45")),
