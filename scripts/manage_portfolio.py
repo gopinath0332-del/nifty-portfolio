@@ -36,8 +36,14 @@ from src.portfolio import PortfolioManager
 
 
 def cmd_list(portfolio: PortfolioManager, kite=None) -> None:
+    # 1. Always attempt live sync with exchange first
+    sync_res = {"authenticated": False}
+    if kite:
+        sync_res = portfolio.sync_with_exchange(kite)
+
+    # 2. Fetch live CMP quotes from exchange for all tracked positions
     current_prices = {}
-    if kite and portfolio.positions:
+    if kite and sync_res.get("authenticated") and portfolio.positions:
         try:
             symbols = [f"NSE:{s}" for s in portfolio.positions.keys()]
             quotes = kite.quote(symbols)
@@ -45,25 +51,42 @@ def cmd_list(portfolio: PortfolioManager, kite=None) -> None:
                 q_key = f"NSE:{s}"
                 if q_key in quotes:
                     current_prices[s] = float(quotes[q_key].get("last_price", 0.0))
-        except Exception:
+        except Exception as e:
             pass
 
     summary = portfolio.get_portfolio_summary(current_prices)
 
     print("\n" + "=" * 75)
-    print("CURRENT PORTFOLIO STATUS")
+    print("🏛️ ZERODHA KITE & NIFTY 500 PORTFOLIO STATUS")
     print("=" * 75)
-    print(f"Total Budget:    ₹{summary['total_capital']:,.2f}")
+
+    if sync_res.get("authenticated"):
+        order_mode = "🟢 ENABLED (Direct Exchange Routing)" if portfolio.config.live_order_placement else "⚪ DISABLED (Actionable Discord Alerts Only)"
+        print(f"Connection:      🟢 LIVE EXCHANGE CONNECTED")
+        print(f"Kite Account:    {sync_res.get('user_id')} ({sync_res.get('user_name')})")
+        if sync_res.get("live_cash") is not None:
+            print(f"Live Avail Cash: ₹{sync_res.get('live_cash'):,.2f} (from kite.margins)")
+        if sync_res.get("equity_margin") is not None:
+            print(f"Net Demat Margin:₹{sync_res.get('equity_margin'):,.2f}")
+        print(f"Order Placement: {order_mode}")
+        print(f"Total Demat:     {sync_res.get('holdings_count', 0)} holdings found on Zerodha")
+    else:
+        print(f"Connection:      ⚠️ EXCHANGE DISCONNECTED (Token Expired or Offline)")
+        print(f"Order Placement: ⚪ DISABLED (Safety Mode)")
+        print(f"Notice:          Run morning auto_login in nifty-strike-engine to refresh token.")
+
+    print("-" * 75)
+    print(f"Strategy Budget: ₹{summary['total_capital']:,.2f} (Max {summary['max_positions']} slots @ ₹{portfolio.position_size:,.0f}/stock)")
     print(f"Portfolio Value: ₹{summary['total_portfolio_value']:,.2f}")
     print(f"Total Invested:  ₹{summary['total_invested']:,.2f}")
     print(f"Cash Balance:    ₹{summary['cash_balance']:,.2f}")
-    print(f"Holdings:        {summary['active_count']}/{summary['max_positions']} stocks ({summary['open_slots']} slots open)")
+    print(f"Strategy Slots:  {summary['active_count']}/{summary['max_positions']} stocks active ({summary['open_slots']} open slots)")
     print(f"Unrealized P&L:  ₹{summary['unrealized_pnl']:+,.2f}")
     print(f"Realized P&L:    ₹{summary['realized_pnl']:+,.2f}")
     print("=" * 75)
 
     if not summary["positions"]:
-        print("\nNo active positions. All 10 slots are available.\n")
+        print(f"\nNo active strategy positions tracked. All {summary['max_positions']} slots are open for fresh breakouts.\n")
         return
 
     table_data = []

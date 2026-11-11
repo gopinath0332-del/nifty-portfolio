@@ -110,14 +110,14 @@ class StrategyEngine:
 
         stocks_to_scan = universe[:max_stocks_to_scan] if max_stocks_to_scan else universe
 
-        # Map symbol -> StockInfo for quick metadata lookup
-        stock_map = {s.symbol: s for s in stocks_to_scan}
+        # Map full universe symbol -> StockInfo for quick metadata and token lookup
+        full_stock_map = {s.symbol: s for s in universe}
 
         # ------------------------------------------------------------------
         # Phase 1: Check Exits on Active Portfolio Positions
         # ------------------------------------------------------------------
         for sym, pos in list(self.portfolio.positions.items()):
-            stock_info = stock_map.get(sym) or StockInfo(symbol=sym, company_name=sym, industry="")
+            stock_info = full_stock_map.get(sym) or StockInfo(symbol=sym, company_name=sym, industry="")
             inst_token = stock_info.instrument_token
             if not inst_token:
                 logger.warning("No instrument token for active position %s. Skipping exit check.", sym)

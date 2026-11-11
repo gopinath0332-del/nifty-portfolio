@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # ==============================================================================
 # restart.sh
 # Restart script for Nifty 500 Portfolio Engine on Raspberry Pi / Linux
@@ -24,7 +24,7 @@ else
 fi
 
 # 2. Check if user wants to trigger an immediate scan now
-if [ "${1:-}" == "--now" ] || [ "${1:-}" == "--scan" ]; then
+if [ "${1:-}" = "--now" ] || [ "${1:-}" = "--scan" ]; then
     echo ""
     echo "⚡ Triggering immediate portfolio scan ($SERVICE_NAME.service)..."
     sudo systemctl start "$SERVICE_NAME.service"

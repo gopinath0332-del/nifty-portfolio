@@ -1,10 +1,81 @@
 {
-  "total_capital": 200000.0,
-  "position_size": 20000.0,
+  "total_capital": 100000.0,
+  "position_size": 10000.0,
   "max_positions": 10,
-  "cash_balance": 200000.0,
-  "positions": {},
+  "cash_balance": 108606.71,
+  "positions": {
+    "BHEL": {
+      "symbol": "BHEL",
+      "entry_date": "2026-11-11",
+      "entry_price": 408.85,
+      "quantity": 25,
+      "invested_amount": 10221.25,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    },
+    "IPCALAB": {
+      "symbol": "IPCALAB",
+      "entry_date": "2026-11-11",
+      "entry_price": 1962.9,
+      "quantity": 5,
+      "invested_amount": 9814.5,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    },
+    "MOTHERSON": {
+      "symbol": "MOTHERSON",
+      "entry_date": "2026-11-11",
+      "entry_price": 153.1,
+      "quantity": 65,
+      "invested_amount": 9951.5,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    },
+    "NUVAMA": {
+      "symbol": "NUVAMA",
+      "entry_date": "2026-11-11",
+      "entry_price": 1753.2,
+      "quantity": 6,
+      "invested_amount": 10519.2,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    },
+    "PETRONET": {
+      "symbol": "PETRONET",
+      "entry_date": "2026-11-11",
+      "entry_price": 303.9,
+      "quantity": 35,
+      "invested_amount": 10636.5,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    },
+    "PNB": {
+      "symbol": "PNB",
+      "entry_date": "2026-11-11",
+      "entry_price": 123.49,
+      "quantity": 85,
+      "invested_amount": 10496.65,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    },
+    "UNIONBANK": {
+      "symbol": "UNIONBANK",
+      "entry_date": "2026-11-11",
+      "entry_price": 186.79,
+      "quantity": 55,
+      "invested_amount": 10273.45,
+      "stop_exit_level": 0.0,
+      "notes": "Auto-synced from Demat Holdings",
+      "industry": ""
+    }
+  },
   "trade_history": [],
   "last_scan_date": null,
-  "last_updated": null
+  "last_updated": "2026-11-11T13:47:39.381819"
 }

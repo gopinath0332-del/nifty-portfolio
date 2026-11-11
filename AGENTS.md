@@ -97,8 +97,28 @@ nifty-portfolio/
    ```
 5. **Run Daily Post-Market Scan & Update:**
    ```powershell
-   python main.py
+   python scripts/run_daily_scan.py
    ```
+6. **Check Live Exchange & Portfolio Status:**
+   ```bash
+   ./status.sh  # or: python scripts/manage_portfolio.py list
+   ```
+
+---
+
+### 🏛️ LIVE EXCHANGE INTEGRATION & SAFETY PRINCIPLE
+
+1. **`LIVE_ORDER_PLACEMENT=false` (Safety Mode):**
+   - **Only order placement to the exchange is disabled.** The engine will never route automated buy/sell orders without explicit permission.
+   - **All other data is ALWAYS collected live from the exchange (Zerodha Kite):**
+     - Live available cash & equity margins via `kite.margins("equity")`.
+     - Live Demat holdings via `kite.holdings()`.
+     - Live open delivery positions via `kite.positions()`.
+     - Live CMP quotes via `kite.quote()`.
+2. **Exchange Synchronization:**
+   - Both `status.sh` and `run_daily_scan.py` automatically call `PortfolioManager.sync_with_exchange(kite)` to reconcile strategy state with real account Demat holdings, eliminating stale or dummy local JSON values.
+3. **Shell Script Compatibility:**
+   - `status.sh` and `restart.sh` are strictly POSIX-compliant (`sh` and `bash` compatible) using `"$0"` directory resolution to prevent `Bad substitution` errors on Debian/Raspberry Pi OS (`dash`).
 
 ---
 

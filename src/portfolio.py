@@ -70,13 +70,15 @@ class PortfolioManager:
             self.save_state()
             return
 
+        # Always enforce baseline configuration from settings.yaml
+        self.total_capital = float(self.config.capital.total_capital)
+        self.position_size = float(self.config.capital.position_size)
+        self.max_positions = int(self.config.capital.max_positions)
+
         try:
             with open(self.state_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            self.total_capital = float(data.get("total_capital", self.config.capital.total_capital))
-            self.position_size = float(data.get("position_size", self.config.capital.position_size))
-            self.max_positions = int(data.get("max_positions", self.config.capital.max_positions))
             self.cash_balance = float(data.get("cash_balance", self.total_capital))
             self.last_scan_date = data.get("last_scan_date")
 
@@ -114,6 +116,150 @@ class PortfolioManager:
             logger.info("Loaded portfolio state: %d active positions, cash=₹%.2f", len(self.positions), self.cash_balance)
         except Exception as e:
             logger.error("Error loading portfolio state from %s: %s", self.state_file, e)
+
+    def sync_with_exchange(self, kite: Any) -> Dict[str, Any]:
+        """
+        Synchronize portfolio state directly with Zerodha Kite Connect:
+          1. Fetches live margins & available cash from kite.margins('equity').
+          2. Fetches live Demat holdings from kite.holdings().
+          3. Fetches live CNC day/net positions from kite.positions().
+          4. Reconciles active positions with actual exchange holdings.
+        """
+        result: Dict[str, Any] = {
+            "authenticated": False,
+            "live_cash": None,
+            "equity_margin": None,
+            "holdings_count": 0,
+            "positions_synced": 0,
+            "positions_closed": 0,
+            "user_id": None,
+            "user_name": None,
+            "error": None,
+        }
+        if not kite:
+            return result
+
+        try:
+            # 1. Profile / Authentication verification
+            profile = kite.profile()
+            result["authenticated"] = True
+            result["user_id"] = profile.get("user_id", "Unknown")
+            result["user_name"] = profile.get("user_name", "")
+
+            # 2. Fetch Live Margins (Available Cash) from Exchange
+            try:
+                margins = kite.margins("equity")
+                live_cash = float(margins.get("available", {}).get("live_balance", 0.0) or margins.get("net", 0.0))
+                result["live_cash"] = live_cash
+                result["equity_margin"] = float(margins.get("net", 0.0))
+                if live_cash > 0:
+                    self.cash_balance = round(live_cash, 2)
+            except Exception as e:
+                logger.warning("Could not fetch equity margins from Kite: %s", e)
+
+            # 3. Fetch Live Demat Holdings & CNC Positions from Exchange
+            exchange_stocks: Dict[str, Dict[str, Any]] = {}
+
+            # A. Holdings (Settled Demat + T1 unsettled)
+            try:
+                demat_holdings = kite.holdings() or []
+                for h in demat_holdings:
+                    sym = str(h.get("tradingsymbol", "")).strip().upper()
+                    qty = int(h.get("quantity", 0)) + int(h.get("t1_quantity", 0))
+                    if qty > 0 and sym:
+                        exchange_stocks[sym] = {
+                            "symbol": sym,
+                            "quantity": qty,
+                            "average_price": float(h.get("average_price", 0.0)),
+                            "last_price": float(h.get("last_price", 0.0)),
+                            "pnl": float(h.get("pnl", 0.0)),
+                            "source": "Demat Holdings",
+                        }
+            except Exception as e:
+                logger.warning("Could not fetch Demat holdings from Kite: %s", e)
+
+            # B. Net Positions (e.g. fresh CNC buys executed today not yet in Demat)
+            try:
+                pos_resp = kite.positions() or {}
+                net_positions = pos_resp.get("net", []) or []
+                for p in net_positions:
+                    sym = str(p.get("tradingsymbol", "")).strip().upper()
+                    prod = str(p.get("product", ""))
+                    qty = int(p.get("quantity", 0))
+                    if prod == "CNC" and qty > 0 and sym:
+                        if sym in exchange_stocks:
+                            exchange_stocks[sym]["quantity"] += qty
+                        else:
+                            exchange_stocks[sym] = {
+                                "symbol": sym,
+                                "quantity": qty,
+                                "average_price": float(p.get("average_price", 0.0)),
+                                "last_price": float(p.get("last_price", 0.0)),
+                                "pnl": float(p.get("pnl", 0.0)),
+                                "source": "Today CNC Order",
+                            }
+            except Exception as e:
+                logger.warning("Could not fetch open positions from Kite: %s", e)
+
+            result["holdings_count"] = len(exchange_stocks)
+
+            # 4. Reconcile with strategy portfolio
+            today_str = datetime.now().strftime("%Y-%m-%d")
+
+            # Check for closed positions (held locally in portfolio_state but no longer in exchange)
+            if exchange_stocks:
+                for sym in list(self.positions.keys()):
+                    if sym not in exchange_stocks:
+                        logger.info("Stock %s sold on exchange. Reconciling exit.", sym)
+                        pos = self.positions.pop(sym)
+                        exit_price = pos.entry_price
+                        trade = TradeRecord(
+                            symbol=sym,
+                            entry_date=pos.entry_date,
+                            exit_date=today_str,
+                            entry_price=pos.entry_price,
+                            exit_price=exit_price,
+                            quantity=pos.quantity,
+                            invested_amount=pos.invested_amount,
+                            exit_amount=pos.invested_amount,
+                            pnl=0.0,
+                            pnl_pct=0.0,
+                            exit_reason="Sold externally on Zerodha Exchange",
+                        )
+                        self.trade_history.append(trade)
+                        result["positions_closed"] += 1
+
+                # Add / update existing positions from exchange
+                for sym, ex_data in exchange_stocks.items():
+                    if sym in self.positions:
+                        self.positions[sym].quantity = ex_data["quantity"]
+                        if ex_data["average_price"] > 0:
+                            self.positions[sym].entry_price = ex_data["average_price"]
+                        self.positions[sym].invested_amount = round(
+                            self.positions[sym].entry_price * self.positions[sym].quantity, 2
+                        )
+                    else:
+                        if len(self.positions) < self.max_positions:
+                            avg_px = ex_data["average_price"]
+                            qty = ex_data["quantity"]
+                            invested = round(avg_px * qty, 2)
+                            self.positions[sym] = Position(
+                                symbol=sym,
+                                entry_date=today_str,
+                                entry_price=avg_px,
+                                quantity=qty,
+                                invested_amount=invested,
+                                notes=f"Auto-synced from {ex_data['source']}",
+                            )
+                            result["positions_synced"] += 1
+
+            self.save_state()
+            return result
+
+        except Exception as e:
+            logger.error("Error during exchange synchronization: %s", e)
+            result["error"] = str(e)
+            return result
 
     def save_state(self) -> None:
         """Save portfolio state to JSON file."""

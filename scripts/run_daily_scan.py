@@ -80,6 +80,23 @@ def main() -> None:
 
     fetcher = MarketDataFetcher(config, kite=kite)
     portfolio = PortfolioManager(config)
+
+    # Always sync live holdings and margins from Zerodha exchange before scanning
+    logger.info("Synchronizing portfolio with live Zerodha Kite holdings and margins...")
+    sync_res = portfolio.sync_with_exchange(kite)
+    if sync_res.get("authenticated"):
+        logger.info(
+            "Live exchange sync successful: User %s | %d Demat holdings | Available Cash: ₹%s",
+            sync_res.get("user_id"),
+            sync_res.get("holdings_count", 0),
+            f"{sync_res.get('live_cash', 0.0):,.2f}" if sync_res.get("live_cash") is not None else "N/A",
+        )
+
+    if config.live_order_placement:
+        logger.info("⚡ LIVE_ORDER_PLACEMENT is ENABLED: Orders will be routed directly to exchange.")
+    else:
+        logger.info("🛡️ LIVE_ORDER_PLACEMENT is DISABLED: Order execution is in Safety Mode. Generating actionable Discord alerts for manual execution.")
+
     strategy = StrategyEngine(config, portfolio=portfolio, fetcher=fetcher)
 
     # 4. Run Strategy Scan
@@ -89,14 +106,24 @@ def main() -> None:
         max_stocks_to_scan=args.limit,
     )
 
-    # 5. Fetch CMPs for current portfolio to compute live summary
+    # 5. Fetch live CMPs from exchange for active positions to compute summary
     current_prices = {}
-    for sym in portfolio.positions.keys():
-        token = next((s.instrument_token for s in stocks if s.symbol == sym), None)
-        if token:
-            df = fetcher.fetch_daily_candles(token, sym, days=10, use_cache=True)
-            if df is not None and not df.empty:
-                current_prices[sym] = float(df["close"].iloc[-1])
+    if portfolio.positions:
+        try:
+            q_syms = [f"NSE:{s}" for s in portfolio.positions.keys()]
+            quotes = kite.quote(q_syms)
+            for s in portfolio.positions.keys():
+                q_key = f"NSE:{s}"
+                if q_key in quotes:
+                    current_prices[s] = float(quotes[q_key].get("last_price", 0.0))
+        except Exception as e:
+            logger.warning("Could not fetch batch quotes from Kite: %s. Falling back to candle close.", e)
+            for sym in portfolio.positions.keys():
+                token = next((s.instrument_token for s in stocks if s.symbol == sym), None)
+                if token:
+                    df = fetcher.fetch_daily_candles(token, sym, days=10, use_cache=True)
+                    if df is not None and not df.empty:
+                        current_prices[sym] = float(df["close"].iloc[-1])
 
     summary = portfolio.get_portfolio_summary(current_prices=current_prices)
 
