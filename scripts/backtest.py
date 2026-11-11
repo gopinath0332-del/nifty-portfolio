@@ -622,6 +622,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Backtest Nifty 500 Donchian Portfolio")
     parser.add_argument("--start", default="2026-01-01", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", default=None, help="End date (YYYY-MM-DD)")
+    parser.add_argument("--entry-len", type=int, default=None, help="Donchian entry lookback length (default: from settings.yaml)")
     parser.add_argument("--within-52w", type=float, default=10.0, help="52W High threshold pct (default: 10.0)")
     parser.add_argument("--no-regime", action="store_true", help="Disable Nifty 500 Market Regime Filter")
     parser.add_argument("--max-loss", type=float, default=8.0, help="Maximum loss stop pct (default: 8.0)")
@@ -631,6 +632,7 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config()
+    entry_len = args.entry_len if args.entry_len is not None else cfg.strategy.entry_len
     sector_limit = args.max_per_sector if args.max_per_sector is not None else cfg.capital.max_per_sector
     use_stage_2 = not args.no_stage_2 if args.no_stage_2 else getattr(cfg.filters, "stage_2_trend_enabled", True)
     min_stock_price = args.min_price if args.min_price is not None else getattr(cfg.filters, "min_stock_price", 100.0)
@@ -641,7 +643,7 @@ def main() -> None:
         max_positions=cfg.capital.max_positions,
         max_per_sector=sector_limit,
         within_52w_pct=args.within_52w,
-        entry_len=cfg.strategy.entry_len,
+        entry_len=entry_len,
         exit_len=cfg.strategy.exit_len,
         use_market_regime=not args.no_regime,
         index_ema_len=cfg.market_regime.ema_len,

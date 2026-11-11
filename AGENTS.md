@@ -229,3 +229,38 @@ A rigorous multi-horizon backtest was conducted across the Nifty 500 universe (c
    - It delays entry into early monster leaders, reduces 5-year compounding by **120.48% (₹1.20 Lakhs)**, lowers the 5-year win rate from 43.8% to 40.3%, and degrades Profit Factor from 2.82 to 2.49.
 3. **Recommendation**:
    - Retain the baseline filter: Price > 50 EMA > 200 SMA. It inherently guarantees an upward momentum trajectory without introducing harmful trend lag.
+
+---
+
+### 🔬 DONCHIAN ENTRY LOOKBACK RESEARCH (50-DAY VS 55-DAY BENCHMARK)
+
+A multi-horizon backtest was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) comparing the **Baseline 50-Day Donchian Entry** (`entry_len = 50`) against a **55-Day Donchian Entry** (`entry_len = 55`):
+
+| Metric & Horizon | Baseline (50-Day Donchian High) | Experimental (55-Day Donchian High) | Variance / Impact |
+| :--- | :--- | :--- | :--- |
+| **2026 YTD Return** | **+39.91%** (CAGR 49.07%) | **+39.91%** (CAGR 49.07%) | Identical performance |
+| **2026 YTD Max DD** | **-11.72%** | **-11.72%** | Identical |
+| **2026 YTD Trades (WR %)** | 46 trades (37.0% WR) | 46 trades (37.0% WR) | Identical |
+| **Last 12M Return** | **+49.84%** (CAGR 50.57%) | **+49.84%** (CAGR 50.57%) | Identical performance |
+| **Last 12M Max DD** | **-11.31%** | **-11.31%** | Identical |
+| **Last 12M Trades (WR %)** | 57 trades (42.1% WR) | 57 trades (42.1% WR) | Identical |
+| **Last 2Y Return** | **+79.42%** (CAGR 34.66%) | **+79.39%** (CAGR 34.65%) | -0.03% (Marginal difference) |
+| **Last 2Y Max DD** | -12.81% | **-12.23%** | +0.58% DD improvement |
+| **Last 2Y Trades (WR %)** | 102 trades (47.1% WR) | 100 trades (48.0% WR) | 2 fewer trades |
+| **Last 5Y Return** | **+425.90%** (CAGR 40.08%) | **+355.63%** (CAGR 36.06%) | **-70.27% drag (-₹70,267)** |
+| **5-Year Ending Equity** | **₹5,25,896.64** | **₹4,55,629.50** | **-₹70,267 profit reduction** |
+| **5-Year Max DD** | -29.53% | **-29.40%** | Comparable (-0.13% variance) |
+| **5-Year Profit Factor** | **2.82** | 2.49 | -0.33 degradation |
+| **5-Year Win Rate** | **43.75%** (126W / 162L) | 41.14% (123W / 176L) | -2.61% lower win rate |
+| **5-Year Trades** | 288 trades | 299 trades | +11 trades |
+
+#### Key Analytical Findings:
+1. **Short-to-Medium Horizons (1–2 Years):**
+   - In 2026 YTD and the Last 12 Months, `entry_len = 50` and `entry_len = 55` yield identical performance (+39.91% and +49.84% respectively) across identical trades. When stocks break out near 52-week highs in strong market regimes, the 50-day and 55-day channel highs are practically coincident.
+   - In the 2-Year window, the return is nearly identical (+79.42% vs +79.39%), with drawdown slightly lower (-12.23% vs -12.81%).
+2. **Long-Term Compounding Drag (5 Years):**
+   - Over a 5-year multi-cycle period, `entry_len = 55` introduces an unnecessary 1-week execution lag (11 trading weeks vs 10 trading weeks / 2.5 calendar months).
+   - Waiting for 55 days enters breakouts later at a higher, more extended price. This reduces the upside margin on runaway winners and causes earlier stops on minor consolidations, lowering the 5-year win rate from 43.8% to 41.1% and the Profit Factor from 2.82 down to 2.49.
+   - As a result, 5-year capital compounding drops from **₹5,25,897 (+425.9%)** down to **₹4,55,630 (+355.6%)**, representing a **₹70,267 profit penalty**.
+3. **Recommendation:**
+   - **Keep `entry_len = 50` as the standard baseline**. It strikes the optimal balance between filtering out noise and entering stage-2 momentum trends before price becomes overextended.
