@@ -264,3 +264,40 @@ A multi-horizon backtest was conducted across the Nifty 500 universe (capital �
    - As a result, 5-year capital compounding drops from **₹5,25,897 (+425.9%)** down to **₹4,55,630 (+355.6%)**, representing a **₹70,267 profit penalty**.
 3. **Recommendation:**
    - **Keep `entry_len = 50` as the standard baseline**. It strikes the optimal balance between filtering out noise and entering stage-2 momentum trends before price becomes overextended.
+
+---
+
+### 🔬 VOLATILITY CONTRACTION / BASE TIGHTNESS (VCP) RESEARCH & BENCHMARK
+
+A comprehensive multi-horizon study was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) testing the hypothesis that **breakouts emerging from tight, low-volatility consolidations (VCP / Base Tightness) improve win rates or reduce drawdowns**.
+
+Six quantitative formulations of pre-breakout contraction were benchmarked against the **Baseline** across all 4 standard horizons:
+1. **Baseline**: 50D Breakout, within 10% of 52W High, Price > 50 EMA > 200 SMA (No VCP filter)
+2. **ATR Compression 90%**: Short ATR (10d) / Long ATR (50d) $\le 0.90$ leading into breakout
+3. **ATR Compression 85%**: Short ATR (10d) / Long ATR (50d) $\le 0.85$ leading into breakout
+4. **Tight 10D Base ($\le 10\%$)**: 10-day price spread leading into breakout $\le 10.0\%$ of price
+5. **Tight 10D Base ($\le 12\%$)**: 10-day price spread leading into breakout $\le 12.0\%$ of price
+6. **Range Compression Ratio**: 10-day range / 50-day channel range $\le 0.50$
+7. **Low Volatility (Normalized ATR)**: 14-day ATR $\le 3.5\%$ of price
+
+| Model / Filter Variant | 2026 YTD Return (Max DD) | 1-Year Return (Max DD) | 2-Year Return (Max DD) | 5-Year Return (Max DD) | 5-Year Profit Factor | 5-Year Win Rate |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline (No VCP Filter)** | **+39.91%** (-11.7%) | **+49.84%** (-11.3%) | **+79.42%** (-12.8%) | **+425.90%** (-29.5%) | **2.82** | **43.75%** (126W/162L) |
+| **ATR Compression ($\le 0.90$)** | -1.95% (-8.9%) | -1.16% (-8.8%) | +17.65% (-8.1%) | +171.37% (-14.7%) | 2.60 | 42.02% (79W/109L) |
+| **ATR Compression ($\le 0.85$)** | -2.06% (-5.6%) | -4.59% (-8.0%) | +1.14% (-8.1%) | +96.44% (-8.8%) | 2.32 | 38.71% (48W/76L) |
+| **Tight 10D Base ($\le 10\%$)** | +1.88% (-11.8%) | +12.19% (-12.0%) | +16.84% (-11.7%) | +91.57% (-27.0%) | 1.66 | 37.13% (101W/171L) |
+| **Tight 10D Base ($\le 12\%$)** | +15.87% (-10.0%) | +20.55% (-14.3%) | +33.87% (-13.2%) | +130.34% (-28.3%) | 2.01 | 35.89% (103W/184L) |
+| **Range Ratio ($\le 0.50$)** | +8.99% (-14.6%) | +22.70% (-9.7%) | +6.99% (-22.3%) | +74.40% (-31.6%) | 1.38 | 37.38% (114W/191L) |
+| **Low ATR% ($\le 3.5\%$)** | +12.45% (-10.1%) | +21.54% (-12.7%) | +45.76% (-14.4%) | +109.05% (-30.8%) | 1.77 | 39.72% (112W/170L) |
+
+#### Key Analytical Findings:
+1. **Severe Performance Destruction Across All Horizons:**
+   - Every single volatility contraction / base tightness variant drastically underperforms the baseline across all 4 timeframes.
+   - In 2026 YTD and the Last 12 Months, strict ATR compression actually turned profitable regimes into **net losing performances** (-1.95% and -1.16% vs +39.91% and +49.84% in the baseline).
+   - Over 5 years, requiring tight bases or ATR compression slashed total return from **+425.90% down to between +74% and +171%**, representing an opportunity loss of over **₹2.5 Lakhs to ₹3.5 Lakhs**.
+2. **Structural Market Mechanics (Why VCP Fails on Stage 2 Trend Following):**
+   - **True Momentum Leaders are Dynamic, Not Dormant**: In high-growth Indian equities, institutional accumulation actively expands volatility and daily ranges as the stock approaches 52-week highs. Forcing an arbitrary tight consolidation filter filters out the strongest secular multibaggers (the 50%+ and 100%+ runners that generate the vast majority of portfolio gains).
+   - **Adverse Selection Bias**: Restricting entries to low-volatility / tight ranges selects sluggish, low-beta, defensive stocks or range-bound names that lack aggressive institutional accumulation. When they finally "break out", they lack momentum velocity and frequently fail, depressing the win rate from 43.8% down to 35-38%.
+3. **Recommendation:**
+   - **DO NOT implement Volatility Contraction or Base Tightness entry filters.**
+   - Retain the baseline filter: Price > 50 EMA > 200 SMA within 10% of 52W High. It allows high-momentum leaders to be captured naturally without artificial volatility penalties.
