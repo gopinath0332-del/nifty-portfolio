@@ -163,3 +163,38 @@ nifty-portfolio/
   - `-6% to -8%`: 20.0% (Deep retest near stop)
 - **Conclusion:** Young positions need room to consolidate (42.6% of eventual winners dip below -4% MAE). Once in mature profit ($\ge +25\%$), the 20 EMA trailing exit protects accumulated gains, while the 20-day tenure cut recycles stagnant capital into fresh breakouts. Margin sizing keeps available cash buffer safe without over-leveraging.
 
+---
+
+### 🔬 WEEKLY TIMEFRAME RESEARCH & BENCHMARK COMPARISON
+
+A comprehensive backtest was conducted comparing the **Daily Baseline** against two weekly operational modes across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots):
+1. **Weekly Literal (50w/20w)**: Direct translation of parameters to weekly bars (50-week Donchian High Breakout, 20-week Low Exit, 50-week EMA Stage 2, 20-week Tenure Cut).
+2. **Weekly Equivalent (10w/4w)**: Horizon-normalized weekly model (10-week Breakout $\approx$ 50 trading days, 4-week Exit $\approx$ 20 trading days, 10-week EMA / 40-week SMA Stage 2 $\approx$ Weinstein/Minervini 50d/200d equivalent, 4-week Tenure Cut $\approx$ 20 days).
+
+| Metric | 2026 YTD | Last 12 Months | Last 2 Years | Last 5 Years |
+| :--- | :--- | :--- | :--- | :--- |
+| **Daily Baseline Return** | **+39.91%** (CAGR 49.1%) | **+49.84%** (CAGR 50.6%) | **+79.42%** (CAGR 34.7%) | **+425.90%** (CAGR 40.1%) |
+| **Weekly Equivalent (10w/4w) Return** | **+36.72%** (CAGR 42.4%) | **+54.18%** (CAGR 52.9%) | **+35.97%** (CAGR 16.4%) | **+361.13%** (CAGR 35.0%) |
+| **Weekly Literal (50w/20w) Return** | **+10.51%** (CAGR 12.0%) | **+46.85%** (CAGR 45.8%) | **-0.89%** (CAGR -0.4%) | **+33.16%** (CAGR 5.8%) |
+| **Daily Baseline Max DD** | -11.72% | -11.31% | **-12.81%** | -29.53% |
+| **Weekly Equivalent Max DD** | **-9.49%** | **-10.36%** | -23.56% | **-29.15%** |
+| **Weekly Literal Max DD** | -10.59% | -9.96% | -26.66% | -34.14% |
+| **Daily Baseline Win Rate** | 36.96% | 42.11% | **47.06%** | 43.75% |
+| **Weekly Equivalent Win Rate** | **61.36%** | **54.90%** | 45.83% | **44.40%** |
+| **Weekly Literal Win Rate** | 41.38% | 43.33% | 28.30% | 31.45% |
+| **Daily Baseline Profit Factor** | 2.87 | 3.24 | **2.99** | **2.82** |
+| **Weekly Equivalent Profit Factor** | **3.75** | **5.37** | 1.96 | 2.52 |
+| **Weekly Literal Profit Factor** | 1.71 | 4.09 | 0.98 | 1.36 |
+| **Trades (Daily vs W-Eq vs W-Lit)** | 46 vs 44 vs 29 | 57 vs 51 vs 30 | 102 vs 96 vs 53 | 288 vs 232 vs 124 |
+
+#### Key Research Takeaways:
+1. **Weekly Equivalent (10w/4w) is highly viable & robust:**
+   - Outperformed Daily in the **Last 12 Months (+54.18% vs +49.84%)** with higher win rate (**54.9% vs 42.1%**) and lower drawdown (**-10.36% vs -11.31%**).
+   - Achieved an outstanding **61.36% win rate** in 2026 YTD with a lower drawdown (-9.49%).
+   - Across 5 Years, compounded capital from ₹1.00L to **₹4.61 Lakhs (+361.13%, 35.0% CAGR)**, operating with ~20% fewer trades and zero intraday noise.
+2. **Weekly Literal (50w/20w) suffers from excessive lag:**
+   - 50 weeks (~1 full year) is too slow for swing momentum in Indian equities; entry occurs when the primary trend is already overextended, resulting in severe whipsaws in 2-year choppy regimes (-0.89% return).
+3. **Daily remains superior for multi-year compounding:**
+   - Daily (+425.90% over 5 years, +79.42% over 2 years) captures quick intraday/daily breakout acceleration and cuts failing trades within days rather than waiting for Friday closes, protecting capital during prolonged corrective regimes like late 2024.
+
+
