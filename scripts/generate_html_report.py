@@ -79,6 +79,7 @@ def generate_html_report(
             <td>₹{t.exit_price:,.2f}</td>
             <td>{t.quantity}</td>
             <td>₹{t.invested:,.2f}</td>
+            <td>₹{t.remaining_margin:,.2f}</td>
             <td class="{badge}">{pnl_sign}₹{t.pnl:,.2f}</td>
             <td class="{badge}">{pnl_sign}{t.pnl_pct:.2f}%</td>
             <td>{t.holding_days} days</td>
@@ -318,11 +319,21 @@ def generate_html_report(
                 <div class="kpi-value text-green">+{res['best_trade'].pnl_pct:.1f}%</div>
                 <div class="kpi-subtext">{res['best_trade'].symbol} (+₹{res['best_trade'].pnl:,.0f})</div>
             </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Margin Deployed</div>
+                <div class="kpi-value text-blue">₹{res.get('avg_invested_margin', 0.0):,.0f}</div>
+                <div class="kpi-subtext">Peak: ₹{res.get('peak_invested_margin', 0.0):,.0f} ({res.get('peak_margin_util_pct', 0.0):.1f}%)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Remaining Margin</div>
+                <div class="kpi-value">₹{res.get('avg_remaining_margin', 0.0):,.0f}</div>
+                <div class="kpi-subtext">Lowest Cash Cushion: ₹{res.get('min_remaining_margin', 0.0):,.0f}</div>
+            </div>
         </div>
 
         <!-- Equity Curve Chart -->
         <div class="chart-section">
-            <div class="chart-header">📈 Portfolio Equity Curve (2026 YTD)</div>
+            <div class="chart-header">📈 Portfolio Equity Curve ({res['start_date']} to {res['end_date']})</div>
             <div style="position: relative; height: 350px;">
                 <canvas id="equityChart"></canvas>
             </div>
@@ -356,7 +367,8 @@ def generate_html_report(
                         <th>Entry Px</th>
                         <th>Exit Px</th>
                         <th>Qty</th>
-                        <th>Invested</th>
+                        <th>Invested Margin</th>
+                        <th>Remaining Margin</th>
                         <th>Net P&L</th>
                         <th>Return (%)</th>
                         <th>Holding</th>

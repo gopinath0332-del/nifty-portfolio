@@ -49,6 +49,7 @@ class SimTrade:
     pnl_pct: float
     holding_days: int
     exit_reason: str
+    remaining_margin: float = 0.0
     mfe_pct: float = 0.0
     mae_pct: float = 0.0
     mfe_pnl: float = 0.0
@@ -229,6 +230,7 @@ class PortfolioBacktester:
                                 pnl_pct=pnl_pct,
                                 holding_days=holding_days,
                                 exit_reason=reason,
+                                remaining_margin=round(pos.get("remaining_margin", 0.0), 2),
                                 mfe_pct=round(mfe_pct, 2),
                                 mae_pct=round(mae_pct, 2),
                                 mfe_pnl=round(mfe_pnl, 2),
@@ -299,6 +301,7 @@ class PortfolioBacktester:
                             "entry_dt": current_dt,
                             "entry_trading_idx": current_idx,
                             "invested": invested,
+                            "remaining_margin": cash,
                             "industry": sec,
                             "peak_high": open_px,
                             "trough_low": open_px,
@@ -453,6 +456,20 @@ class PortfolioBacktester:
         df_monthly["prev"] = df_monthly["equity"].shift(1).fillna(self.initial_capital)
         df_monthly["return_pct"] = ((df_monthly["equity"] - df_monthly["prev"]) / df_monthly["prev"]) * 100.0
 
+        # Margin & Capital Allocation Analytics
+        df_eq["invested_margin"] = df_eq["equity"] - df_eq["cash"]
+        df_eq["margin_util_pct"] = (df_eq["invested_margin"] / df_eq["equity"]) * 100.0
+
+        avg_invested_margin = float(df_eq["invested_margin"].mean())
+        peak_invested_margin = float(df_eq["invested_margin"].max())
+        avg_remaining_margin = float(df_eq["cash"].mean())
+        min_remaining_margin = float(df_eq["cash"].min())
+        avg_margin_util_pct = float(df_eq["margin_util_pct"].mean())
+        peak_margin_util_pct = float(df_eq["margin_util_pct"].max())
+
+        avg_trade_invested = float(np.mean([t.invested for t in closed_trades])) if closed_trades else 0.0
+        avg_trade_remaining_margin = float(np.mean([t.remaining_margin for t in closed_trades])) if closed_trades else 0.0
+
         return {
             "start_date": sorted_dates[0].strftime("%Y-%m-%d"),
             "end_date": sorted_dates[-1].strftime("%Y-%m-%d"),
@@ -494,6 +511,14 @@ class PortfolioBacktester:
             "mae_win_2_to_4": mae_win_2_to_4,
             "mae_win_4_to_6": mae_win_4_to_6,
             "mae_win_over_6": mae_win_over_6,
+            "avg_invested_margin": avg_invested_margin,
+            "peak_invested_margin": peak_invested_margin,
+            "avg_remaining_margin": avg_remaining_margin,
+            "min_remaining_margin": min_remaining_margin,
+            "avg_margin_util_pct": avg_margin_util_pct,
+            "peak_margin_util_pct": peak_margin_util_pct,
+            "avg_trade_invested": avg_trade_invested,
+            "avg_trade_remaining_margin": avg_trade_remaining_margin,
             "closed_trades": closed_trades,
             "open_positions": positions,
             "equity_df": df_eq,
@@ -530,6 +555,18 @@ def print_backtest_report(res: Dict) -> None:
         ["Average Holding Period", f"{res['avg_holding_days']:.1f} days"],
     ]
     print(tabulate(perf_data, tablefmt="fancy_grid"))
+
+    # Margin & Capital Allocation Table
+    margin_data = [
+        ["Average Capital Invested (Active Margin)", f"₹{res.get('avg_invested_margin', 0.0):,.2f} ({res.get('avg_margin_util_pct', 0.0):.1f}%)"],
+        ["Peak Capital Invested (Max Exposure)", f"₹{res.get('peak_invested_margin', 0.0):,.2f} ({res.get('peak_margin_util_pct', 0.0):.1f}%)"],
+        ["Average Remaining Margin (Cash Cushion)", f"₹{res.get('avg_remaining_margin', 0.0):,.2f}"],
+        ["Minimum Remaining Margin (Lowest Cash)", f"₹{res.get('min_remaining_margin', 0.0):,.2f}"],
+        ["Average Invested Margin per Trade", f"₹{res.get('avg_trade_invested', 0.0):,.2f}"],
+        ["Average Remaining Margin at Trade Entry", f"₹{res.get('avg_trade_remaining_margin', 0.0):,.2f}"],
+    ]
+    print("\n💰 MARGIN & CAPITAL ALLOCATION PROFILE:")
+    print(tabulate(margin_data, headers=["Allocation Metric", "Value"], tablefmt="grid"))
 
     # MAE / MFE Analysis
     mae_mfe_data = [
@@ -574,10 +611,10 @@ def print_backtest_report(res: Dict) -> None:
     print("\n🏆 TOP 10 WINNING TRADES:")
     top_trades = sorted(res["closed_trades"], key=lambda t: t.pnl, reverse=True)[:10]
     top_rows = [
-        [t.symbol, t.entry_date, t.exit_date, f"₹{t.entry_price:.1f}", f"₹{t.exit_price:.1f}", t.quantity, f"₹{t.pnl:+,.1f}", f"{t.pnl_pct:+.1f}%", f"+{t.mfe_pct:.1f}%", f"{t.mae_pct:.1f}%", f"{t.holding_days}d"]
+        [t.symbol, t.entry_date, t.exit_date, f"₹{t.entry_price:.1f}", f"₹{t.exit_price:.1f}", t.quantity, f"₹{t.invested:,.1f}", f"₹{t.remaining_margin:,.1f}", f"₹{t.pnl:+,.1f}", f"{t.pnl_pct:+.1f}%", f"+{t.mfe_pct:.1f}%", f"{t.mae_pct:.1f}%", f"{t.holding_days}d"]
         for t in top_trades
     ]
-    print(tabulate(top_rows, headers=["Symbol", "Entry", "Exit", "Buy Px", "Sell Px", "Qty", "P&L (₹)", "P&L (%)", "Peak MFE", "Deep MAE", "Days"], tablefmt="grid"))
+    print(tabulate(top_rows, headers=["Symbol", "Entry", "Exit", "Buy Px", "Sell Px", "Qty", "Invested (₹)", "Rem Margin (₹)", "P&L (₹)", "P&L (%)", "Peak MFE", "Deep MAE", "Days"], tablefmt="grid"))
     print("=" * 70 + "\n")
 
 

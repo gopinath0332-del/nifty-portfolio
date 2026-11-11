@@ -102,20 +102,36 @@ nifty-portfolio/
 
 ---
 
-### 📊 LATEST BENCHMARK METRICS
+### 📊 LATEST BENCHMARK METRICS (4-HORIZON COMPARATIVE MATRIX)
 
-#### 1. 5-Year Historical Performance (June 2021 – June 2026)
-- **Starting Capital:** ₹1,00,000.00
-- **Ending Capital:** **₹4,85,040.00** (+385.04% Net Return)
-- **Annualized Return (CAGR):** **+37.14% p.a.**
-- **Profit Factor:** **2.54**
-- **Max Drawdown:** **-17.59%**
-- **Sharpe Ratio ($R_f=6.5\%$):** **1.29** | **Sortino Ratio:** **1.60** | **Calmar Ratio:** **2.11**
-- **Trades Executed:** 278 (122 Wins / 156 Losses)
-- **Win Rate:** **43.9%** | **Win/Loss Ratio:** **3.24x** (+21.4% average winner vs -5.8% average loser)
-- **Average Holding Period:** 44.2 days
+| Performance & Margin Metric | 2026 YTD (Current Year) | Last 12 Months (Nov 25 – Nov 26) | Last 2 Years (Nov 24 – Nov 26) | Last 5 Years (Nov 21 – Nov 26) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Date Window** | 2026-01-01 to 2026-11-09 | 2025-11-10 to 2026-11-09 | 2024-11-11 to 2026-11-09 | 2021-11-10 to 2026-11-09 |
+| **Starting Capital** | ₹1,00,000.00 | ₹1,00,000.00 | ₹1,00,000.00 | ₹1,00,000.00 |
+| **Ending Equity** | **₹1,39,914.82** | **₹1,49,842.37** | **₹1,79,420.33** | **₹5,25,896.64** |
+| **Net Profit** | +₹39,914.82 | +₹49,842.37 | +₹79,420.33 | +₹4,25,896.64 |
+| **Total Net Return** | **+39.91%** | **+49.84%** | **+79.42%** | **+425.90%** |
+| **Annualized Return (CAGR)**| **+49.07%** | **+50.57%** | **+34.66%** | **+40.08%** |
+| **Max Drawdown (%)** | **-11.72%** (₹13.5k) | **-11.31%** (₹13.7k) | **-12.81%** (₹18.2k) | **-29.53%** (₹51.5k) |
+| **Profit Factor** | **2.87** | **3.24** | **2.99** | **2.82** |
+| **Sharpe Ratio ($R_f=6.5\%$)** | **1.79** | **1.79** | **1.29** | **1.37** |
+| **Sortino Ratio** | **2.88** | **2.59** | **1.74** | **1.75** |
+| **Calmar Ratio** | **4.19** | **4.47** | **2.71** | **1.36** |
+| **Trades (Wins / Losses)** | 46 (17W / 29L) | 57 (24W / 33L) | 102 (48W / 54L) | 288 (126W / 162L) |
+| **Win Rate** | 36.96% | 42.11% | 47.06% | 43.75% |
+| **Avg Winner / Avg Loser** | +25.24% / -7.53% | +22.53% / -6.29% | +17.62% / -5.67% | +21.07% / -6.38% |
+| **Win/Loss Payout Ratio** | **3.35x** | **3.58x** | **3.11x** | **3.30x** |
+| **Avg Holding Period** | 44.2 days | 45.7 days | 48.9 days | 47.0 days |
+| **Avg Active Invested Margin** | ₹83,307 (72.1%) | ₹90,112 (76.1%) | ₹91,118 (73.2%) | ₹1,91,089 (79.9%) |
+| **Peak Margin Deployed** | ₹1,39,722 (99.99%) | ₹1,50,069 (99.99%) | ₹1,79,598 (99.99%) | ₹5,25,880 (99.99%) |
+| **Avg Remaining Cash Cushion** | ₹33,076 | ₹29,938 | ₹32,736 | ₹48,417 |
+| **Min Remaining Margin (Buffer)** | ₹8.17 | ₹2.58 | ₹7.75 | ₹1.73 |
+| **Avg Invested Margin / Trade** | ₹10,057 | ₹10,226 | ₹11,499 | ₹22,744 |
+| **Avg Rem Margin at Entry** | ₹16,190 | ₹15,861 | ₹13,806 | ₹20,419 |
 
-#### 2. MAE / MFE (Maximum Adverse & Favorable Excursion) Insights
+---
+
+#### MAE / MFE (Maximum Adverse & Favorable Excursion) Insights
 - **Average Peak Profit (MFE) on Winners:** **+38.43%** (Realized: **+21.05%**)
 - **Exit Capture Efficiency:** **44.6%** (Two-tier exit dynamically locks in peak profits when momentum breaks 20 EMA, while allowing Stage 2 trends to compound).
 - **Average Adverse Drawdown (MAE) on Winners:** **-3.93%**
@@ -125,13 +141,5 @@ nifty-portfolio/
   - `-2% to -4%`: 29.6% (Mild noise)
   - `-4% to -6%`: 22.6% (Standard consolidation)
   - `-6% to -8%`: 20.0% (Deep retest near stop)
-- **Conclusion:** Young positions need room to consolidate (42.6% of eventual winners dip below -4% MAE). Once in mature profit ($\ge +25\%$), the 20 EMA trailing exit protects accumulated gains, while the 20-day tenure cut recycles stagnant capital into fresh breakouts.
-
-#### 3. 12-Month Performance (Nov 2025 – Nov 2026)
-- **12-Month Return:** **+68.42%** (Ending Equity: ₹1,68,420 on ₹1,00,000)
-- **Max Drawdown:** **-9.48%** (Sub-10% drawdown)
-- **Annualized Sharpe Ratio ($R_f=6.5\%$):** **2.21**
-- **Sortino Ratio:** **3.25** | **Calmar Ratio:** **7.18**
-- **Profit Factor:** **3.37**
-- **Win Rate:** **38.7%** | **Average Winner:** +26.1% | **Average Loser:** -5.3%
+- **Conclusion:** Young positions need room to consolidate (42.6% of eventual winners dip below -4% MAE). Once in mature profit ($\ge +25\%$), the 20 EMA trailing exit protects accumulated gains, while the 20-day tenure cut recycles stagnant capital into fresh breakouts. Margin sizing keeps available cash buffer safe without over-leveraging.
 
