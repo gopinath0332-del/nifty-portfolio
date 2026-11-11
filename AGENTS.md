@@ -198,3 +198,34 @@ A comprehensive backtest was conducted comparing the **Daily Baseline** against 
    - Daily (+425.90% over 5 years, +79.42% over 2 years) captures quick intraday/daily breakout acceleration and cuts failing trades within days rather than waiting for Friday closes, protecting capital during prolonged corrective regimes like late 2024.
 
 
+
+---
+
+### 🔬 RISING 200 SMA ENTRY FILTER RESEARCH & BENCHMARK COMPARISON
+
+A rigorous multi-horizon backtest was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) comparing the **Baseline Stage 2 Filter** against explicit **Rising 200 SMA** entry conditions:
+1. **Baseline**: Price > 50 EMA > 200 SMA
+2. **200 SMA Rising (1-day slope)**: SMA_200[t] > SMA_200[t-1]
+3. **200 SMA Rising (20-day / 1-month slope - Minervini Template)**: SMA_200[t] > SMA_200[t-20]
+
+| Metric & Horizon | Baseline (Price > 50 EMA > 200 SMA) | 200 SMA Rising (1-Day Slope) | 200 SMA Rising (20-Day / 1-Mo Slope) |
+| :--- | :--- | :--- | :--- |
+| **2026 YTD Return** | **+39.91%** (CAGR 49.1%) | **+39.91%** (CAGR 49.1%) | **+36.95%** (CAGR 45.3%) |
+| **Last 12M Return** | **+49.84%** (CAGR 50.6%) | **+49.84%** (CAGR 50.6%) | **+41.98%** (CAGR 42.6%) |
+| **Last 2Y Return** | **+79.42%** (CAGR 34.7%) | **+79.42%** (CAGR 34.7%) | **+76.70%** (CAGR 33.6%) |
+| **Last 5Y Return** | **+425.90%** (CAGR 40.1%) | **+425.90%** (CAGR 40.1%) | **+305.42%** (CAGR 32.9%) |
+| **5-Year Ending Equity** | **₹5,25,896.64** | **₹5,25,896.64** | **₹4,05,420.00** (-₹1.20L profit drag) |
+| **2026 YTD Max DD** | -11.72% | -11.72% | **-10.61%** |
+| **5-Year Max DD** | **-29.53%** | **-29.53%** | -30.39% |
+| **5-Year Profit Factor** | **2.82** | **2.82** | **2.49** |
+| **5-Year Total Trades** | 288 (126W / 162L) | 288 (126W / 162L) | 300 (121W / 179L) |
+| **5-Year Win Rate** | **43.75%** | **43.75%** | **40.33%** |
+
+#### Key Takeaways:
+1. **1-Day Slope is Mathematically Redundant**:
+   - Because our baseline already demands a 50-day Donchian High breakout within 10% of 52W high and Price > 50 EMA > 200 SMA, the price entering the 200 SMA calculation window is virtually always substantially higher than the price exiting it (Close_t > Close_t-200). The 200 SMA is already sloping upward at the exact moment of entry.
+2. **20-Day Slope Introduces Significant Lag and Opportunity Drag**:
+   - Demanding that 200 SMA has already been rising for 20 trading days (~1 month) penalizes the highest-velocity turnaround leaders emerging from deep stage 1 bases.
+   - It delays entry into early monster leaders, reduces 5-year compounding by **120.48% (₹1.20 Lakhs)**, lowers the 5-year win rate from 43.8% to 40.3%, and degrades Profit Factor from 2.82 to 2.49.
+3. **Recommendation**:
+   - Retain the baseline filter: Price > 50 EMA > 200 SMA. It inherently guarantees an upward momentum trajectory without introducing harmful trend lag.
