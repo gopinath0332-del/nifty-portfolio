@@ -112,20 +112,18 @@ nifty-portfolio/
 
 ---
 
-### 📱 INSTITUTIONAL DISCORD NOTIFICATION ARCHITECTURE
+### 📱 INSTITUTIONAL RETRO RECEIPT DISCORD NOTIFICATION ARCHITECTURE
 
-The daily alerts (`src/discord_notifier.py`) format critical trading data for instant mobile and desktop readability, eliminating vertical sprawl and multi-screen scrolling:
-1. **⚡ Monospace Quick Execution Sheets**:
-   - Both **BUY** and **EXIT** embeds feature top-level monospace ASCII tables (` ```text `) containing ticker, quantity, CMP, entry, and estimated investment.
-   - Allows traders to open Zerodha Kite and execute all CNC market orders in under 30 seconds without reading paragraphs of text.
-2. **Compact Technical Setup Cards**:
-   - Replaced bloated 8-line bullet points with structured 3-line high-density cards:
-     - `Price Setup`: CMP, Breakout % over pivot level.
-     - `Momentum & Volume`: RVOL, 52W Distance %, Composite Momentum Score.
-     - `Subtext Action Hint`: `-# 💡 Action: Place CNC Market order on Kite`.
-3. **📊 Daily Portfolio Summary Grid & Monospace Holdings Table**:
-   - Key KPIs (Portfolio Value, Cash Balance, Slots, Unrealized P&L, Invested, Realized P&L) render as a 6-tile Discord embed grid (`inline: True`).
-   - Holdings table displays in a clean monospace code block sorted by **P&L% descending** (winners on top) with aligned columns and total portfolio return.
+The daily alerts (`src/discord_notifier.py`) use a retro Bloomberg Terminal receipt design engineered specifically for mobile Discord viewports:
+1. **⚡ Narrow 27-Character Monospace Receipt Boxes (Zero Wrapping Guarantee)**:
+   - All ASCII receipt tables are strictly bounded to **27 characters wide** (`┌─────────────────────────┐`).
+   - Fits comfortably inside iOS and Android mobile Discord viewports without wrapping mid-line or fragmenting columns.
+   - Summarizes ticker, suggested quantity, CMP (or P&L%), and total capital required in a compact order ticket.
+2. **Compact 1-Liner Technical Setup Notes**:
+   - Technical indicators (Breakout %, Pivot, RVOL, Composite Momentum Score) render as concise bullet notes directly beneath the receipt box.
+   - Runners-up are placed in a subtle subtext watchlist (`-# Watchlist: ...`).
+3. **📊 Minimalist Portfolio Summary Card**:
+   - Replaced multi-box embed fields with a unified single-card view: narrow 27-character holdings receipt sorted by **P&L% descending** accompanied by key equity, cash, and P&L metrics.
 
 ---
 

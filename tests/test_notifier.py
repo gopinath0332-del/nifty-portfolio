@@ -1,13 +1,13 @@
 """
 tests/test_notifier.py
 ======================
-Unit tests for DiscordNotifier message construction and embed formatting.
+Unit tests for DiscordNotifier retro receipt formatting.
 """
 
 from unittest.mock import MagicMock, patch
 import pytest
 
-from src.discord_notifier import DiscordNotifier, COLOR_BUY, COLOR_EXIT, COLOR_SUMMARY
+from src.discord_notifier import DiscordNotifier, RECEIPT_WIDTH, _build_receipt_box
 from src.strategy import EntryCandidate, ExitSignal, ScanResult
 
 
@@ -16,7 +16,23 @@ def mock_notifier():
     return DiscordNotifier(webhook_url="https://discord.com/api/webhooks/dummy/dummy")
 
 
-def test_build_exit_fields(mock_notifier):
+def test_build_receipt_box_width():
+    rows = [
+        f"{'MCX':<9} {7:>4} {3724.7:>8.1f}",
+        f"{'ANGELONE':<9} {81:>4} {349.6:>8.1f}",
+    ]
+    box = _build_receipt_box(
+        title="BUY ORDERS (2 SLOTS)",
+        col_header=f"{'TICKER':<9} {'QTY':>4} {'CMP':>8}",
+        rows=rows,
+        footer="TOT: Rs 54,395 (CNC)",
+    )
+    lines = box.split("\n")
+    for l in lines:
+        assert len(l) == RECEIPT_WIDTH, f"Line '{l}' length is {len(l)}, expected {RECEIPT_WIDTH}"
+
+
+def test_build_exit_receipt(mock_notifier):
     exits = [
         ExitSignal(
             symbol="IPCALAB",
@@ -30,19 +46,13 @@ def test_build_exit_fields(mock_notifier):
             pnl_pct=-2.95,
         )
     ]
-    fields = mock_notifier._build_exit_fields(exits)
-    assert len(fields) == 2
-    # Field 0 is quick execution table
-    assert "Quick Order Execution" in fields[0]["name"]
-    assert "IPCALAB" in fields[0]["value"]
-    assert "1905.00" in fields[0]["value"]
-    # Field 1 is card
-    assert "IPCALAB" in fields[1]["name"]
-    assert "-2.95%" in fields[1]["value"]
-    assert "20-Day Low Breakdown" in fields[1]["value"]
+    desc = mock_notifier._build_exit_receipt(exits)
+    assert "IPCALAB" in desc
+    assert "SELL ORDERS (1)" in desc
+    assert "ACTION: SELL CNC (KITE)" in desc
 
 
-def test_build_buy_fields(mock_notifier):
+def test_build_buy_receipt(mock_notifier):
     recommended = [
         EntryCandidate(
             symbol="GABRIEL",
@@ -77,18 +87,10 @@ def test_build_buy_fields(mock_notifier):
             rank=2,
         )
     ]
-    fields = mock_notifier._build_buy_fields(recommended, runners)
-    assert len(fields) == 3
-    # Quick order sheet
-    assert "Quick Order Placement" in fields[0]["name"]
-    assert "GABRIEL" in fields[0]["value"]
-    assert "25,920" in fields[0]["value"]
-    # Setup card
-    assert "GABRIEL" in fields[1]["name"]
-    assert "11.78x" in fields[1]["value"]
-    # Runners up
-    assert "Runners-Up" in fields[2]["name"]
-    assert "NAVINFLUOR" in fields[2]["value"]
+    desc = mock_notifier._build_buy_receipt(recommended, runners)
+    assert "GABRIEL" in desc
+    assert "BUY ORDERS (1 SLOTS)" in desc
+    assert "Watchlist: **NAVINFLUOR**" in desc
 
 
 def test_notify_scan_results_dispatches_embeds(mock_notifier):
@@ -145,6 +147,4 @@ def test_notify_scan_results_dispatches_embeds(mock_notifier):
         }
 
         mock_notifier.notify_scan_results(scan_res, summary)
-        # 3 calls: Exit embed, Buy embed, Summary embed
         assert mock_send.call_count == 3
-
