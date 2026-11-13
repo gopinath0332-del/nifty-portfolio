@@ -62,13 +62,15 @@ nifty-portfolio/
 │   ├── portfolio.py           # Portfolio state manager, risk-based sizing, sector tracking
 │   ├── market_data.py         # Kite Connect historical candle fetcher & caching layer
 │   ├── universe.py            # Nifty 500 universe loader and token mapping
-│   ├── notifier.py            # Discord webhook execution alerts & daily reports
+│   ├── discord_notifier.py    # Discord webhook execution alerts & daily reports
 │   └── orders.py              # Kite order placement with safety dry-run checks
 ├── scripts/
 │   ├── backtest.py            # Chronological portfolio simulation engine & terminal reporter
-│   └── generate_html_report.py# Interactive Chart.js backtest report generator
+│   ├── generate_html_report.py# Interactive Chart.js backtest report generator
+│   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
-│   └── test_strategy.py       # Pytest unit tests for all strategy modules
+│   ├── test_strategy.py       # Pytest unit tests for strategy modules
+│   └── test_notifier.py       # Pytest unit tests for Discord message formatting
 └── data/
     ├── nifty500.csv           # Master Nifty 500 constituent list with sector metadata
     ├── portfolio_state.json   # Live portfolio state (open positions, cash, slots)
@@ -103,6 +105,27 @@ nifty-portfolio/
    ```bash
    ./status.sh  # or: python scripts/manage_portfolio.py list
    ```
+7. **Test Discord Alert Formatting & Webhook:**
+   ```powershell
+   python scripts/test_notification.py
+   ```
+
+---
+
+### 📱 INSTITUTIONAL DISCORD NOTIFICATION ARCHITECTURE
+
+The daily alerts (`src/discord_notifier.py`) format critical trading data for instant mobile and desktop readability, eliminating vertical sprawl and multi-screen scrolling:
+1. **⚡ Monospace Quick Execution Sheets**:
+   - Both **BUY** and **EXIT** embeds feature top-level monospace ASCII tables (` ```text `) containing ticker, quantity, CMP, entry, and estimated investment.
+   - Allows traders to open Zerodha Kite and execute all CNC market orders in under 30 seconds without reading paragraphs of text.
+2. **Compact Technical Setup Cards**:
+   - Replaced bloated 8-line bullet points with structured 3-line high-density cards:
+     - `Price Setup`: CMP, Breakout % over pivot level.
+     - `Momentum & Volume`: RVOL, 52W Distance %, Composite Momentum Score.
+     - `Subtext Action Hint`: `-# 💡 Action: Place CNC Market order on Kite`.
+3. **📊 Daily Portfolio Summary Grid & Monospace Holdings Table**:
+   - Key KPIs (Portfolio Value, Cash Balance, Slots, Unrealized P&L, Invested, Realized P&L) render as a 6-tile Discord embed grid (`inline: True`).
+   - Holdings table displays in a clean monospace code block sorted by **P&L% descending** (winners on top) with aligned columns and total portfolio return.
 
 ---
 
