@@ -216,4 +216,24 @@ def test_two_tier_exit_configuration():
     assert strat.max_loss_holding_days == 20
 
 
+def test_portfolio_backtester_universe_filtering():
+    from scripts.backtest import PortfolioBacktester
+
+    # Case A: Default Nifty 500
+    bt500 = PortfolioBacktester()
+    assert bt500.allowed_symbols is None
+
+    # Case B: Specific allowed symbols
+    bt_sub = PortfolioBacktester(allowed_symbols=["RELIANCE", "TCS"])
+    assert bt_sub.allowed_symbols == {"RELIANCE", "TCS"}
+
+    # Case C: Nifty 50 CSV filtering if present
+    if os.path.exists("data/nifty50.csv"):
+        bt50 = PortfolioBacktester(universe_csv="data/nifty50.csv")
+        assert bt50.allowed_symbols is not None
+        assert "RELIANCE" in bt50.allowed_symbols
+        assert len(bt50.allowed_symbols) == 50
+
+
+
 

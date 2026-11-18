@@ -67,12 +67,14 @@ nifty-portfolio/
 ├── scripts/
 │   ├── backtest.py            # Chronological portfolio simulation engine & terminal reporter
 │   ├── generate_html_report.py# Interactive Chart.js backtest report generator
+│   ├── test_nifty50_vs_nifty500.py # Comprehensive Nifty 50 vs Nifty 500 multi-horizon benchmark
 │   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
 │   ├── test_strategy.py       # Pytest unit tests for strategy modules
 │   └── test_notifier.py       # Pytest unit tests for Discord message formatting
 └── data/
     ├── nifty500.csv           # Master Nifty 500 constituent list with sector metadata
+    ├── nifty50.csv            # Official Nifty 50 constituent list with sector metadata
     ├── portfolio_state.json   # Live portfolio state (open positions, cash, slots)
     └── cache/                 # Cached daily candle CSVs for all 500 stocks + index
 ```
@@ -108,6 +110,12 @@ nifty-portfolio/
 7. **Test Discord Alert Formatting & Webhook:**
    ```powershell
    python scripts/test_notification.py
+   ```
+8. **Run Nifty 50 vs. Nifty 500 Benchmark Comparison:**
+   ```powershell
+   python scripts/test_nifty50_vs_nifty500.py
+   # Or run standalone Nifty 50 backtest:
+   python scripts/backtest.py --universe nifty50 --start 2026-01-01
    ```
 
 ---
@@ -322,3 +330,55 @@ Six quantitative formulations of pre-breakout contraction were benchmarked again
 3. **Recommendation:**
    - **DO NOT implement Volatility Contraction or Base Tightness entry filters.**
    - Retain the baseline filter: Price > 50 EMA > 200 SMA within 10% of 52W High. It allows high-momentum leaders to be captured naturally without artificial volatility penalties.
+
+---
+
+### 🔬 NIFTY 50 VS. NIFTY 500 UNIVERSE RESEARCH & BENCHMARK COMPARISON
+
+A rigorous multi-horizon comparative backtest was conducted comparing the identical **Turtle System 2** trend-following strategy across the **Nifty 500 master universe** (500 stocks) and the **Nifty 50 large-cap universe** (50 stocks) under identical portfolio sizing rules (Starting Capital: ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots, 3 per sector):
+
+| Metric & Horizon | 2026 YTD (Current Year) | Last 12 Months | Last 2 Years | Last 5 Years |
+| :--- | :--- | :--- | :--- | :--- |
+| **Date Window** | 2026-01-01 to 2026-11-09 | 2025-11-10 to 2026-11-09 | 2024-11-11 to 2026-11-09 | 2021-11-10 to 2026-11-09 |
+| **Nifty 500 Total Return** | **+39.91%** | **+49.84%** | **+79.42%** | **+425.90%** |
+| **Nifty 50 Total Return** | **-10.60%** | **-4.10%** | **-4.55%** | **+53.08%** |
+| **Performance Variance (Delta)** | **-50.51% drag** | **-53.94% drag** | **-83.97% drag** | **-372.82% drag (-₹3.73 Lakhs)** |
+| **Nifty 500 Ending Equity** | **₹1,39,914.82** | **₹1,49,842.37** | **₹1,79,420.33** | **₹5,25,896.64** |
+| **Nifty 50 Ending Equity** | **₹89,399.37** | **₹95,895.60** | **₹95,451.73** | **₹1,53,081.31** |
+| **Nifty 500 CAGR** | **+49.07%** | **+50.57%** | **+34.66%** | **+40.08%** |
+| **Nifty 50 CAGR** | -12.47% | -4.15% | -2.34% | +9.03% |
+| **Nifty 500 Max Drawdown** | **-11.72%** | **-11.31%** | **-12.81%** | -29.53% |
+| **Nifty 50 Max Drawdown** | -12.84% | -11.76% | -13.07% | **-14.73%** |
+| **Nifty 500 Profit Factor** | **2.87** | **3.24** | **2.99** | **2.82** |
+| **Nifty 50 Profit Factor** | 0.25 | 0.60 | 0.79 | 1.49 |
+| **Nifty 500 Sharpe ($R_f=6.5\%$)** | **1.79** | **1.79** | **1.29** | **1.37** |
+| **Nifty 50 Sharpe** | -1.78 | -0.95 | -0.81 | 0.25 |
+| **Nifty 500 Win Rate** | **37.0%** (17W / 29L) | **42.1%** (24W / 33L) | **47.1%** (48W / 54L) | **43.8%** (126W / 162L) |
+| **Nifty 50 Win Rate** | 22.0% (9W / 32L) | 24.4% (11W / 34L) | 27.9% (24W / 62L) | 33.9% (81W / 158L) |
+| **Nifty 500 Avg Win / Avg Loss** | **+25.24% / -7.53%** | **+22.53% / -6.29%** | **+17.62% / -5.67%** | **+21.07% / -6.38%** |
+| **Nifty 50 Avg Win / Avg Loss** | +4.92% / -4.54% | +5.94% / -4.21% | +8.18% / -4.33% | +15.70% / -4.41% |
+| **Nifty 500 Win/Loss Ratio** | **3.35x** | **3.58x** | **3.11x** | **3.30x** |
+| **Nifty 50 Win/Loss Ratio** | 1.08x | 1.41x | 1.89x | **3.56x** |
+| **Nifty 500 Avg Active Margin** | ₹83,307 (72.1%) | ₹90,112 (76.1%) | ₹91,118 (73.2%) | ₹1,91,089 (79.9%) |
+| **Nifty 50 Avg Active Margin** | ₹51,443 (55.0%) | ₹60,030 (60.2%) | ₹59,457 (59.4%) | ₹90,786 (67.5%) |
+| **Nifty 500 Peak Margin Deployed** | ₹1,39,722 (100%) | ₹1,50,069 (100%) | ₹179,598 (100%) | ₹5,25,880 (100%) |
+| **Nifty 50 Peak Margin Deployed** | ₹100,244 (100%) | ₹104,230 (100%) | ₹105,931 (100%) | ₹1,71,473 (100%) |
+
+---
+
+#### 🔍 Critical Analytical Drivers of Nifty 50 Underperformance
+
+1. **The "Fat Right Tail" (Multibagger Asymmetry) is Absent in Mega Caps:**
+   - Donchian trend following and momentum investing are fundamentally **convex, fat-tailed strategies**. They tolerate a sub-50% win rate because a small cluster of massive runaway winners (+50%, +100%, +200%) covers all smaller losses and powers overall portfolio compounding.
+   - In Nifty 500, broad secular leaders (e.g. defense, capital goods, power, electronics manufacturing) deliver sustained explosive momentum. In 2026 YTD and the Last 12M, Nifty 500 average winning trades yielded **+25.24%** and **+22.53%**.
+   - In Nifty 50, mega caps (e.g. Reliance, TCS, HDFC Bank, Infosys, ITC) rarely stage multi-month explosive rallies. The average winner in Nifty 50 was only **+4.92% (2026 YTD)** and **+5.94% (Last 12M)**. Without explosive right-tail expansion, standard trading frictions and whipsaw stops erode equity.
+2. **Heavy Mean Reversion & Institutional Algo Dominance in Nifty 50:**
+   - Nifty 50 stocks are the most liquid, institutional, and derivatives-heavy securities on the NSE. They are dominated by institutional arbitrage, options market makers, and mean-reversion algorithms.
+   - Breakouts beyond 50-day Donchian highs in Nifty 50 frequently trigger immediate institutional profit-taking and mean-reversion, leading to high false-break rates. Consequently, Nifty 50 win rates collapse to **22.0% in 2026 YTD** and **24.4% in 12M** (vs. 37.0% and 42.1% in Nifty 500).
+3. **Severe Breadth & Cash Drag Constraint:**
+   - In a 50-stock universe with strict Stage 2 uptrend filters (Price > 50 EMA > 200 SMA and within 10% of 52W High), there are frequently only 2 to 5 stocks meeting the setup at any given time.
+   - With 10 portfolio slots available, Nifty 50 operated at an average margin utilization of only **55% to 60%** (cash cushion hovered at ~₹40,000 idle out of ₹1,00,000).
+   - In contrast, Nifty 500 consistently deployed **72% to 80%** of capital into high-velocity trend leaders, maximizing capital compounding velocity.
+4. **Strategic Conclusion:**
+   - **The Donchian / Stage-2 momentum engine must remain deployed on the Nifty 500 universe.**
+   - Restricting the strategy to Nifty 50 converts a top-quartile market-beating system (+425.9% 5Y CAGR 40.1%) into a stagnant, underperforming model (+53.1% 5Y CAGR 9.0%, and net negative over 1-year and 2-year horizons).

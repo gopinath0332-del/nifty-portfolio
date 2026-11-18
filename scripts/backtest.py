@@ -81,6 +81,8 @@ class PortfolioBacktester:
         profit_lock_threshold_pct: float = 25.0,
         profit_lock_ema_len: int = 20,
         max_loss_holding_days: int = 20,
+        universe_csv: Optional[str] = None,
+        allowed_symbols: Optional[List[str]] = None,
     ):
         self.initial_capital = initial_capital
         self.position_size = position_size
@@ -104,24 +106,42 @@ class PortfolioBacktester:
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
 
+        self.universe_csv = universe_csv
+        target_csv = universe_csv if universe_csv else "data/nifty500.csv"
+        if target_csv.lower() in ("nifty50", "data/nifty50.csv"):
+            target_csv = "data/nifty50.csv"
+        elif target_csv.lower() in ("nifty500", "data/nifty500.csv"):
+            target_csv = "data/nifty500.csv"
+
         self.symbol_industry_map: Dict[str, str] = {}
-        if os.path.exists("data/nifty500.csv"):
+        if os.path.exists(target_csv):
             try:
-                df_u = pd.read_csv("data/nifty500.csv")
+                df_u = pd.read_csv(target_csv)
                 for _, r in df_u.iterrows():
                     self.symbol_industry_map[str(r["Symbol"]).strip()] = str(r["Industry"]).strip()
             except Exception:
                 pass
 
-    def load_universe_data(self, cache_dir: str = "data/cache/daily_candles") -> Dict[str, pd.DataFrame]:
+        if allowed_symbols is not None:
+            self.allowed_symbols = set(allowed_symbols)
+        elif universe_csv and universe_csv.lower() not in ("data/nifty500.csv", "nifty500"):
+            self.allowed_symbols = set(self.symbol_industry_map.keys())
+        else:
+            self.allowed_symbols = None
+
+    def load_universe_data(self, cache_dir: str = "data/cache/daily_candles", symbols: Optional[List[str]] = None) -> Dict[str, pd.DataFrame]:
         """Load and precompute indicators for all cached stock candles."""
         files = glob.glob(os.path.join(cache_dir, "*.csv"))
         stock_dfs = {}
+        filter_symbols = set(symbols) if symbols is not None else self.allowed_symbols
 
         for f in files:
             try:
                 base = os.path.basename(f)
                 sym = base.split("_")[0]
+                if filter_symbols is not None and sym not in filter_symbols:
+                    continue
+
                 df = pd.read_csv(f)
                 if len(df) < max(self.entry_len, self.exit_len) + 10:
                     continue
@@ -629,6 +649,7 @@ def main() -> None:
     parser.add_argument("--max-per-sector", type=int, default=None, help="Max stocks per sector (default: from settings.yaml)")
     parser.add_argument("--no-stage-2", action="store_true", help="Disable Stage 2 Trend Filter (Price > 50 EMA > 200 SMA)")
     parser.add_argument("--min-price", type=float, default=None, help="Minimum stock price (default: from settings.yaml)")
+    parser.add_argument("--universe", default="data/nifty500.csv", help="Universe CSV or name ('nifty50', 'nifty500', path)")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -657,11 +678,12 @@ def main() -> None:
         profit_lock_threshold_pct=getattr(cfg.strategy, "profit_lock_threshold_pct", 25.0),
         profit_lock_ema_len=getattr(cfg.strategy, "profit_lock_ema_len", 20),
         max_loss_holding_days=getattr(cfg.strategy, "max_loss_holding_days", 20),
+        universe_csv=args.universe,
         start_date=args.start,
         end_date=args.end,
     )
 
-    print(f"Loading cached Nifty 500 stock data...")
+    print(f"Loading cached {args.universe} stock data...")
     stock_dfs = backtester.load_universe_data()
     print(f"Loaded {len(stock_dfs)} stocks with valid data. Running backtest simulation...")
 
