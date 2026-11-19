@@ -47,22 +47,31 @@ class TradeRecord:
 
 
 class PortfolioManager:
-    """Manages 10-stock portfolio allocation of ₹2,00,000 (₹20,000 per stock)."""
+    """Manages portfolio allocation based on fixed strategy capital (e.g. ₹1,00,000 baseline)."""
 
     def __init__(self, config: AppConfig):
         self.config = config
         self.state_file = BASE_DIR / config.files.state_file
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-        self.total_capital: float = config.capital.total_capital
-        self.position_size: float = config.capital.position_size
-        self.max_positions: int = config.capital.max_positions
+        self.total_capital: float = float(config.capital.total_capital)
+        self.max_positions: int = int(config.capital.max_positions)
+        self.position_size: float = float(config.capital.position_size or (self.total_capital / max(1, self.max_positions)))
         self.cash_balance: float = self.total_capital
         self.positions: Dict[str, Position] = {}
         self.trade_history: List[TradeRecord] = []
         self.last_scan_date: Optional[str] = None
 
         self.load_state()
+
+    def _reconcile_cash(self) -> None:
+        """
+        Reconcile cash balance strictly against the strategy's fixed portfolio budget
+        (config.capital.total_capital) rather than external Zerodha account balances.
+        """
+        total_invested = sum(pos.invested_amount for pos in self.positions.values())
+        realized_pnl = sum(t.pnl for t in self.trade_history)
+        self.cash_balance = round(max(0.0, self.total_capital + realized_pnl - total_invested), 2)
 
     def load_state(self) -> None:
         """Load portfolio state from JSON file."""
@@ -72,14 +81,13 @@ class PortfolioManager:
 
         # Always enforce baseline configuration from settings.yaml
         self.total_capital = float(self.config.capital.total_capital)
-        self.position_size = float(self.config.capital.position_size)
         self.max_positions = int(self.config.capital.max_positions)
+        self.position_size = float(self.config.capital.position_size or (self.total_capital / max(1, self.max_positions)))
 
         try:
             with open(self.state_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            self.cash_balance = float(data.get("cash_balance", self.total_capital))
             self.last_scan_date = data.get("last_scan_date")
 
             self.positions = {}
@@ -113,7 +121,10 @@ class PortfolioManager:
                     )
                 )
 
-            logger.info("Loaded portfolio state: %d active positions, cash=₹%.2f", len(self.positions), self.cash_balance)
+            # Reconcile cash balance to guarantee isolation from external Zerodha cash
+            self._reconcile_cash()
+
+            logger.info("Loaded portfolio state: %d active positions, cash=₹%.2f (budget=₹%.2f)", len(self.positions), self.cash_balance, self.total_capital)
         except Exception as e:
             logger.error("Error loading portfolio state from %s: %s", self.state_file, e)
 
@@ -146,14 +157,21 @@ class PortfolioManager:
             result["user_id"] = profile.get("user_id", "Unknown")
             result["user_name"] = profile.get("user_name", "")
 
-            # 2. Fetch Live Margins (Available Cash) from Exchange
+            # 2. Fetch Live Margins (Available Cash) from Exchange for reporting/diagnostics
             try:
                 margins = kite.margins("equity")
                 live_cash = float(margins.get("available", {}).get("live_balance", 0.0) or margins.get("net", 0.0))
                 result["live_cash"] = live_cash
                 result["equity_margin"] = float(margins.get("net", 0.0))
-                if live_cash > 0:
-                    self.cash_balance = round(live_cash, 2)
+                # Strategy operates strictly on a dedicated fixed portfolio budget (config.capital.total_capital).
+                # Zerodha total account cash is kept for reporting only and NOT assigned to cash_balance.
+                if live_cash < self.cash_balance:
+                    logger.warning(
+                        "Zerodha account available cash (₹%.2f) is lower than strategy portfolio cash (₹%.2f). "
+                        "Ensure sufficient account funds before executing new entries.",
+                        live_cash,
+                        self.cash_balance,
+                    )
             except Exception as e:
                 logger.warning("Could not fetch equity margins from Kite: %s", e)
 
@@ -253,6 +271,7 @@ class PortfolioManager:
                             )
                             result["positions_synced"] += 1
 
+            self._reconcile_cash()
             self.save_state()
             return result
 
@@ -309,8 +328,8 @@ class PortfolioManager:
         eq = current_equity if current_equity is not None else self.get_total_equity()
 
         if getattr(self.config.capital, "sizing_mode", "fixed") == "risk_pct":
-            risk_pct = getattr(self.config.capital, "risk_per_trade_pct", 2.0)
-            max_alloc_pct = getattr(self.config.capital, "max_position_size_pct", 20.0)
+            risk_pct = getattr(self.config.capital, "risk_per_trade_pct", 1.25)
+            max_alloc_pct = getattr(self.config.capital, "max_position_size_pct", 15.0)
 
             # Determine stop distance (capped at max 8% stop)
             effective_stop = stop_price if stop_price is not None and stop_price > 0 else (price * 0.92)
@@ -319,15 +338,16 @@ class PortfolioManager:
             risk_budget = eq * (risk_pct / 100.0)
             qty = int(risk_budget // risk_per_share)
 
-            # Cap by max position allocation (e.g. 20% of equity = ₹20,000 on ₹1,00,000)
+            # Cap by max position allocation (e.g. 15% of equity = ₹15,000 on ₹1,00,000)
             max_pos_budget = eq * (max_alloc_pct / 100.0)
             qty = min(qty, int(max_pos_budget // price))
 
-            # Cap by available cash
+            # Cap by available cash in strategy portfolio
             qty = min(qty, int(self.cash_balance // price))
             return max(0, qty)
         else:
-            return max(0, int(self.position_size // price))
+            alloc = min(self.position_size, self.cash_balance)
+            return max(0, int(alloc // price))
 
     def get_sector_counts(self) -> Dict[str, int]:
         """Return the count of active positions in each industry/sector."""
@@ -377,7 +397,7 @@ class PortfolioManager:
             industry=industry,
         )
         self.positions[symbol] = pos
-        self.cash_balance = max(0.0, self.cash_balance - invested)
+        self._reconcile_cash()
         self.save_state()
         logger.info("Added position: %s x%d @ ₹%.2f (Total: ₹%.2f)", symbol, quantity, entry_price, invested)
         return pos
@@ -414,7 +434,7 @@ class PortfolioManager:
             exit_reason=exit_reason,
         )
         self.trade_history.append(trade)
-        self.cash_balance += exit_amount
+        self._reconcile_cash()
         self.save_state()
         logger.info("Closed position: %s @ ₹%.2f (PnL: ₹%.2f / %.2f%%) - Reason: %s", symbol, exit_price, pnl, pnl_pct, exit_reason)
         return trade

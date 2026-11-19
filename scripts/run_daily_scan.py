@@ -86,10 +86,11 @@ def main() -> None:
     sync_res = portfolio.sync_with_exchange(kite)
     if sync_res.get("authenticated"):
         logger.info(
-            "Live exchange sync successful: User %s | %d Demat holdings | Available Cash: ₹%s",
+            "Live exchange sync successful: User %s | %d Demat holdings | Zerodha Margin: ₹%s | Strategy Cash: ₹%s",
             sync_res.get("user_id"),
             sync_res.get("holdings_count", 0),
             f"{sync_res.get('live_cash', 0.0):,.2f}" if sync_res.get("live_cash") is not None else "N/A",
+            f"{portfolio.cash_balance:,.2f}",
         )
 
     if config.live_order_placement:
@@ -140,7 +141,7 @@ def main() -> None:
             print(f"  • {ex.symbol:<10} | Close: ₹{ex.close_price:.2f} | 20D Low: ₹{ex.low_20_level:.2f} | PnL: ₹{ex.pnl:+.2f} ({ex.pnl_pct:+.2f}%)")
 
     if result.recommended_entries:
-        print("\n🟢 RECOMMENDED BUYS (Allocation: ₹20,000 each):")
+        print(f"\n🟢 RECOMMENDED BUYS (Strategy Budget: ₹{portfolio.total_capital:,.0f} | Base Slot: ₹{portfolio.position_size:,.0f}):")
         for cand in result.recommended_entries:
             print(f"  #{cand.rank:<2} {cand.symbol:<10} | CMP: ₹{cand.close_price:>8.2f} | Qty: {cand.suggested_qty:<3} (₹{cand.investment_amount:>8.2f}) | 20D High: ₹{cand.high_20_level:.2f} (+{cand.breakout_pct:.1f}%) | 52W Dist: {cand.dist_52w_pct:+.1f}% | RVOL: {cand.rvol:.1f}x | Score: {cand.composite_score:.1f}")
 

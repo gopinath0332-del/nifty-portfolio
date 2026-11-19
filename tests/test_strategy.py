@@ -235,5 +235,103 @@ def test_portfolio_backtester_universe_filtering():
         assert len(bt50.allowed_symbols) == 50
 
 
+def test_fixed_portfolio_budget_isolation_from_exchange_balance():
+    """Verify that Zerodha account balance does NOT inflate strategy cash or stock lot sizing."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        state_file = os.path.join(temp_dir, "test_state_iso.json")
+        cfg = AppConfig(
+            capital=CapitalConfig(
+                total_capital=100000.0,
+                position_size=10000.0,
+                max_positions=10,
+                sizing_mode="risk_pct",
+                risk_per_trade_pct=1.25,
+                max_position_size_pct=15.0,
+            ),
+            files=FilesConfig(state_file=state_file),
+        )
+        pm = PortfolioManager(cfg)
+
+        # Mock Kite client with huge account balance (e.g. ₹15,00,000)
+        class MockKite:
+            def profile(self):
+                return {"user_id": "AB1234", "user_name": "Test User"}
+            def margins(self, segment):
+                return {"available": {"live_balance": 1500000.0}, "net": 1500000.0}
+            def holdings(self):
+                return [
+                    {"tradingsymbol": "TCS", "quantity": 10, "t1_quantity": 0, "average_price": 3500.0, "last_price": 3600.0, "pnl": 1000.0}
+                ]
+            def positions(self):
+                return {"net": []}
+
+        sync_res = pm.sync_with_exchange(MockKite())
+
+        # Kite live cash is captured for diagnostic logs
+        assert sync_res["live_cash"] == 1500000.0
+        assert sync_res["authenticated"] is True
+
+        # BUT strategy cash_balance is strictly isolated to fixed budget (₹100,000 - ₹35,000 invested = ₹65,000)
+        assert pm.cash_balance == 65000.0
+        assert pm.get_total_equity() == 100000.0
+
+        # Suggested quantity for ₹500 stock must be sized on ₹100,000 portfolio (15% cap = ₹15,000 => 30 shares)
+        # Not on ₹15,00,000 Zerodha balance (which would have yielded 450 shares!)
+        qty = pm.calculate_quantity(500.0, stop_price=460.0)
+        assert qty == 30
+        assert qty * 500.0 <= 15000.0
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_future_portfolio_capital_scaling():
+    """Verify that user can increase total_capital in the future and portfolio scales automatically."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        state_file = os.path.join(temp_dir, "test_state_scale.json")
+        # Step 1: Base configuration of ₹1,00,000
+        cfg1 = AppConfig(
+            capital=CapitalConfig(
+                total_capital=100000.0,
+                position_size=10000.0,
+                max_positions=10,
+                sizing_mode="risk_pct",
+                risk_per_trade_pct=1.25,
+                max_position_size_pct=15.0,
+            ),
+            files=FilesConfig(state_file=state_file),
+        )
+        pm1 = PortfolioManager(cfg1)
+        pm1.add_position("STOCK1", entry_price=100.0, quantity=100)  # ₹10,000 invested
+        assert pm1.cash_balance == 90000.0
+        assert pm1.get_total_equity() == 100000.0
+
+        # Step 2: User increases total_capital to ₹2,50,000 in config
+        cfg2 = AppConfig(
+            capital=CapitalConfig(
+                total_capital=250000.0,
+                position_size=25000.0,
+                max_positions=10,
+                sizing_mode="risk_pct",
+                risk_per_trade_pct=1.25,
+                max_position_size_pct=15.0,
+            ),
+            files=FilesConfig(state_file=state_file),
+        )
+        pm2 = PortfolioManager(cfg2)
+        # Available cash automatically scales: ₹2,50,000 - ₹10,000 = ₹2,40,000
+        assert pm2.cash_balance == 240000.0
+        assert pm2.get_total_equity() == 250000.0
+
+        # Sizing scales with the increased ₹2,50,000 portfolio (15% max = ₹37,500 => 75 shares @ ₹500)
+        qty = pm2.calculate_quantity(500.0, stop_price=460.0)
+        assert qty == 75
+        assert qty * 500.0 == 37500.0
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+
 
 

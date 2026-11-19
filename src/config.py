@@ -155,11 +155,15 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
     exec_data = raw_cfg.get("execution", {})
     files_data = raw_cfg.get("files", {})
 
+    total_cap = float(capital_data.get("total_capital", 100000.0))
+    max_pos = int(capital_data.get("max_positions", 10))
+    pos_sz = float(capital_data.get("position_size", total_cap / max(1, max_pos)))
+
     return AppConfig(
         capital=CapitalConfig(
-            total_capital=float(capital_data.get("total_capital", 100000.0)),
-            position_size=float(capital_data.get("position_size", 10000.0)),
-            max_positions=int(capital_data.get("max_positions", 10)),
+            total_capital=total_cap,
+            position_size=pos_sz,
+            max_positions=max_pos,
             max_per_sector=int(capital_data.get("max_per_sector", 2)),
             dynamic_compounding=bool(capital_data.get("dynamic_compounding", False)),
             sizing_mode=str(capital_data.get("sizing_mode", "risk_pct")),

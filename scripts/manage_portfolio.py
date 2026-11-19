@@ -65,7 +65,7 @@ def cmd_list(portfolio: PortfolioManager, kite=None) -> None:
         print(f"Connection:      🟢 LIVE EXCHANGE CONNECTED")
         print(f"Kite Account:    {sync_res.get('user_id')} ({sync_res.get('user_name')})")
         if sync_res.get("live_cash") is not None:
-            print(f"Live Avail Cash: ₹{sync_res.get('live_cash'):,.2f} (from kite.margins)")
+            print(f"Zerodha Margin:  ₹{sync_res.get('live_cash'):,.2f} (Total cash in Kite account)")
         if sync_res.get("equity_margin") is not None:
             print(f"Net Demat Margin:₹{sync_res.get('equity_margin'):,.2f}")
         print(f"Order Placement: {order_mode}")
@@ -79,7 +79,7 @@ def cmd_list(portfolio: PortfolioManager, kite=None) -> None:
     print(f"Strategy Budget: ₹{summary['total_capital']:,.2f} (Max {summary['max_positions']} slots @ ₹{portfolio.position_size:,.0f}/stock)")
     print(f"Portfolio Value: ₹{summary['total_portfolio_value']:,.2f}")
     print(f"Total Invested:  ₹{summary['total_invested']:,.2f}")
-    print(f"Cash Balance:    ₹{summary['cash_balance']:,.2f}")
+    print(f"Strategy Cash:   ₹{summary['cash_balance']:,.2f} (Available for new entries)")
     print(f"Strategy Slots:  {summary['active_count']}/{summary['max_positions']} stocks active ({summary['open_slots']} open slots)")
     print(f"Unrealized P&L:  ₹{summary['unrealized_pnl']:+,.2f}")
     print(f"Realized P&L:    ₹{summary['realized_pnl']:+,.2f}")
@@ -211,7 +211,7 @@ def main() -> None:
     buy_parser = subparsers.add_parser("buy", help="Record a manual buy order")
     buy_parser.add_argument("--symbol", required=True, help="Stock symbol (e.g. RELIANCE)")
     buy_parser.add_argument("--price", type=float, required=True, help="Execution buy price")
-    buy_parser.add_argument("--qty", type=int, default=None, help="Quantity (default: ₹20k / price)")
+    buy_parser.add_argument("--qty", type=int, default=None, help="Quantity (default: auto-calculated by portfolio manager)")
     buy_parser.add_argument("--stop", type=float, default=0.0, help="Initial stop exit level")
 
     # sell

@@ -2,7 +2,7 @@
   "total_capital": 100000.0,
   "position_size": 10000.0,
   "max_positions": 10,
-  "cash_balance": 108606.71,
+  "cash_balance": 28086.95,
   "positions": {
     "BHEL": {
       "symbol": "BHEL",
@@ -77,5 +77,5 @@
   },
   "trade_history": [],
   "last_scan_date": null,
-  "last_updated": "2026-11-11T13:47:39.381819"
+  "last_updated": "2026-11-19T22:04:24.871679"
 }

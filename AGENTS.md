@@ -140,13 +140,18 @@ The daily alerts (`src/discord_notifier.py`) use a retro Bloomberg Terminal rece
 1. **`LIVE_ORDER_PLACEMENT=false` (Safety Mode):**
    - **Only order placement to the exchange is disabled.** The engine will never route automated buy/sell orders without explicit permission.
    - **All other data is ALWAYS collected live from the exchange (Zerodha Kite):**
-     - Live available cash & equity margins via `kite.margins("equity")`.
+     - Live available cash & equity margins via `kite.margins("equity")` (captured for diagnostic reporting).
      - Live Demat holdings via `kite.holdings()`.
      - Live open delivery positions via `kite.positions()`.
      - Live CMP quotes via `kite.quote()`.
-2. **Exchange Synchronization:**
+2. **Fixed Portfolio Budget Isolation & Sizing (₹1,00,000 Baseline):**
+   - **Strategy Cash Isolation:** Sizing and available cash are strictly governed by the dedicated strategy budget (`total_capital: 100000.0` in `config/settings.yaml`), completely isolated from Zerodha's overall account cash.
+   - **No Account Balance Contamination:** External funds in the user's Zerodha account (e.g. ₹5,00,000 or ₹10,00,000) are NEVER used to size positions. `kite.margins("equity")` is logged purely for diagnostics.
+   - **Automatic Scaling:** If the user wishes to increase the portfolio value in the future, simply update `total_capital` in `config/settings.yaml` (e.g. `200000.0`). Available cash and suggested lot counts scale proportionately without code changes.
+   - **Cash Reconciliation:** Strategy cash is dynamically maintained as: $\text{Cash} = \max(0, \text{Total Capital} + \text{Realized P&L} - \text{Total Invested})$.
+3. **Exchange Synchronization:**
    - Both `status.sh` and `run_daily_scan.py` automatically call `PortfolioManager.sync_with_exchange(kite)` to reconcile strategy state with real account Demat holdings, eliminating stale or dummy local JSON values.
-3. **Shell Script Compatibility:**
+4. **Shell Script Compatibility:**
    - `status.sh` and `restart.sh` are strictly POSIX-compliant (`sh` and `bash` compatible) using `"$0"` directory resolution to prevent `Bad substitution` errors on Debian/Raspberry Pi OS (`dash`).
 
 ---

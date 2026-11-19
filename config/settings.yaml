@@ -3,11 +3,11 @@
 # ============================================================
 
 capital:
-  total_capital: 100000.0 # Total portfolio budget in INR (₹1,00,000)
-  position_size: 10000.0 # Fallback allocation if fixed mode
-  sizing_mode: "risk_pct" # "risk_pct" (optimal risk sizing) or "fixed"
+  total_capital: 100000.0 # Dedicated strategy portfolio budget in INR (₹1,00,000) - can be increased in future (e.g. 200000)
+  position_size: 10000.0 # Fallback allocation per slot (₹10,000 base for 10 slots)
+  sizing_mode: "risk_pct" # "risk_pct" (optimal dynamic risk sizing) or "fixed"
   risk_per_trade_pct: 1.25 # Optimal: Risk 1.25% of portfolio equity per trade (₹1,250 on ₹1,00,000)
-  max_position_size_pct: 15.0 # Optimal: Cap single position to max 15% of capital (₹15,000)
+  max_position_size_pct: 15.0 # Optimal: Cap single position to max 15% of capital (₹15,000 on ₹1,00,000)
   max_positions: 10 # Maximum stocks allowed in portfolio
   max_per_sector: 3 # Maximum stocks allowed in the same industry/sector (Optimal: allows riding 3 leaders in monster thematic trends)
 
