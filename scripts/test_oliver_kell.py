@@ -86,6 +86,10 @@ def compute_kell_indicators(df: pd.DataFrame, base_len: int = 5) -> pd.DataFrame
     # Extension above 10 EMA today
     out["extension_10ema_pct"] = ((out["close"] - out["ema_10"]) / out["ema_10"]) * 100.0
 
+    # 52-Week High & Proximity (252 trading days)
+    out["high_52w"] = out["high"].rolling(window=252, min_periods=min(50, len(out))).max()
+    out["dist_52w_high_pct"] = ((out["close"] - out["high_52w"]) / out["high_52w"]) * 100.0
+
     return out
 
 
@@ -109,6 +113,7 @@ class OliverKellBacktester:
         universe_csv: str = "data/nifty500.csv",
         cache_dir: str = "data/cache/daily_candles",
         use_market_regime: bool = True,
+        within_52w_pct: Optional[float] = None,
     ):
         self.initial_capital = initial_capital
         self.risk_per_trade_pct = risk_per_trade_pct
@@ -127,6 +132,7 @@ class OliverKellBacktester:
         self.universe_csv = universe_csv
         self.cache_dir = cache_dir
         self.use_market_regime = use_market_regime
+        self.within_52w_pct = within_52w_pct
 
         self.symbol_industry_map: Dict[str, str] = {}
         self._load_universe()
@@ -417,6 +423,12 @@ class OliverKellBacktester:
                 # Filter 1: Price >= 100
                 if close_px < 100.0:
                     continue
+
+                # Filter 1b: 52-Week High Proximity (if enabled)
+                if self.within_52w_pct is not None:
+                    dist_52w = float(row["dist_52w_high_pct"])
+                    if np.isnan(dist_52w) or dist_52w < -self.within_52w_pct:
+                        continue
 
                 # Filter 2: Uptrend (Close > 10 EMA > 20 EMA)
                 ema10 = float(row["ema_10"])

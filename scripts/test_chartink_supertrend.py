@@ -144,6 +144,10 @@ def load_and_enrich_chartink_data() -> Dict[str, pd.DataFrame]:
         df["rvol"] = np.where(df["vol_sma_20"] > 0, df["volume"] / df["vol_sma_20"], 1.0)
         df["ema_20"] = df["close"].ewm(span=20, adjust=False).mean()
 
+        # 5. 52-Week High & Proximity (252 trading days)
+        df["high_52w"] = df["high"].rolling(252, min_periods=min(50, len(df))).max()
+        df["dist_52w_high_pct"] = ((df["close"] - df["high_52w"]) / df["high_52w"]) * 100.0
+
         # Check Chartink Entry Conditions:
         # 1. SMA(20) > SMA(200)
         # 2. Close > SMA(20)
@@ -181,6 +185,7 @@ class ChartinkBacktester:
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
         use_market_regime: bool = True,
+        within_52w_pct: Optional[float] = None,
     ):
         self.exit_mode = exit_mode
         self.initial_capital = initial_capital
@@ -192,6 +197,7 @@ class ChartinkBacktester:
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
         self.use_market_regime = use_market_regime
+        self.within_52w_pct = within_52w_pct
 
         self.symbol_industry_map: Dict[str, str] = {}
         if os.path.exists("data/nifty500.csv"):
@@ -389,6 +395,12 @@ class ChartinkBacktester:
                     passes_filter = bool(row.get("chartink_signal", False))
                     fresh_signal = bool(row.get("chartink_fresh_signal", False))
 
+                    # 52-Week High Proximity Filter (if specified)
+                    if passes_filter and self.within_52w_pct is not None:
+                        dist_52w = float(row.get("dist_52w_high_pct", -999.0))
+                        if np.isnan(dist_52w) or dist_52w < -self.within_52w_pct:
+                            passes_filter = False
+
                     if passes_filter:
                         # Rank by RSI * RVOL
                         score = rsi_14 * rvol * (1.5 if fresh_signal else 1.0)
@@ -502,16 +514,17 @@ def run_benchmark():
             "Avg Hold Days": f"{base_res['avg_holding_days']:.1f}d",
         })
 
-        # 2. Chartink Strategy: Exit A (Pure Supertrend Flip)
+        # 2. Chartink Strategy: Pure (No 52W Filter)
         bt_st = ChartinkBacktester(
             exit_mode="supertrend",
             initial_capital=100000.0,
             start_date=start_d,
             end_date=end_d,
+            within_52w_pct=None,
         )
         st_res = bt_st.run(stock_dfs)
         results.append({
-            "Strategy": "Chartink (Supertrend+RSI>60+20SMA)",
+            "Strategy": "Chartink Pure (No 52W)",
             "Exit Model": "Supertrend(7,3) Flip",
             "Horizon": h_name,
             "Ending Equity": f"₹{st_res['ending_equity']:,.2f}",
@@ -524,48 +537,73 @@ def run_benchmark():
             "Avg Hold Days": f"{st_res['avg_holding_days']:.1f}d",
         })
 
-        # 3. Chartink Strategy: Exit B (20 SMA Breakdown)
-        bt_sma = ChartinkBacktester(
-            exit_mode="sma_20",
+        # 3. Chartink Strategy + 52W High (<= 10%)
+        bt_52w_10 = ChartinkBacktester(
+            exit_mode="supertrend",
             initial_capital=100000.0,
             start_date=start_d,
             end_date=end_d,
+            within_52w_pct=10.0,
         )
-        sma_res = bt_sma.run(stock_dfs)
+        st_10_res = bt_52w_10.run(stock_dfs)
         results.append({
-            "Strategy": "Chartink (Supertrend+RSI>60+20SMA)",
-            "Exit Model": "Close < 20 SMA Breakdown",
+            "Strategy": "Chartink + 52W High (<=10%)",
+            "Exit Model": "Supertrend(7,3) Flip",
             "Horizon": h_name,
-            "Ending Equity": f"₹{sma_res['ending_equity']:,.2f}",
-            "Return %": f"{sma_res['total_return_pct']:+.2f}%",
-            "CAGR %": f"{sma_res['cagr_pct']:.2f}%",
-            "Max DD %": f"{sma_res['max_drawdown_pct']:.2f}%",
-            "Win Rate %": f"{sma_res['win_rate']:.1f}%",
-            "Profit Factor": f"{sma_res['profit_factor']:.2f}",
-            "Trades": sma_res['total_trades'],
-            "Avg Hold Days": f"{sma_res['avg_holding_days']:.1f}d",
+            "Ending Equity": f"₹{st_10_res['ending_equity']:,.2f}",
+            "Return %": f"{st_10_res['total_return_pct']:+.2f}%",
+            "CAGR %": f"{st_10_res['cagr_pct']:.2f}%",
+            "Max DD %": f"{st_10_res['max_drawdown_pct']:.2f}%",
+            "Win Rate %": f"{st_10_res['win_rate']:.1f}%",
+            "Profit Factor": f"{st_10_res['profit_factor']:.2f}",
+            "Trades": st_10_res['total_trades'],
+            "Avg Hold Days": f"{st_10_res['avg_holding_days']:.1f}d",
         })
 
-        # 4. Chartink Strategy: Exit C (Tiered Profit-Lock + Supertrend Flip)
-        bt_tiered = ChartinkBacktester(
+        # 4. Chartink Strategy + 52W High (<= 15%)
+        bt_52w_15 = ChartinkBacktester(
+            exit_mode="supertrend",
+            initial_capital=100000.0,
+            start_date=start_d,
+            end_date=end_d,
+            within_52w_pct=15.0,
+        )
+        st_15_res = bt_52w_15.run(stock_dfs)
+        results.append({
+            "Strategy": "Chartink + 52W High (<=15%)",
+            "Exit Model": "Supertrend(7,3) Flip",
+            "Horizon": h_name,
+            "Ending Equity": f"₹{st_15_res['ending_equity']:,.2f}",
+            "Return %": f"{st_15_res['total_return_pct']:+.2f}%",
+            "CAGR %": f"{st_15_res['cagr_pct']:.2f}%",
+            "Max DD %": f"{st_15_res['max_drawdown_pct']:.2f}%",
+            "Win Rate %": f"{st_15_res['win_rate']:.1f}%",
+            "Profit Factor": f"{st_15_res['profit_factor']:.2f}",
+            "Trades": st_15_res['total_trades'],
+            "Avg Hold Days": f"{st_15_res['avg_holding_days']:.1f}d",
+        })
+
+        # 5. Chartink Strategy + 52W High (<= 10%) + Tiered Exit
+        bt_tiered_52w = ChartinkBacktester(
             exit_mode="tiered",
             initial_capital=100000.0,
             start_date=start_d,
             end_date=end_d,
+            within_52w_pct=10.0,
         )
-        tiered_res = bt_tiered.run(stock_dfs)
+        tiered_52w_res = bt_tiered_52w.run(stock_dfs)
         results.append({
-            "Strategy": "Chartink (Supertrend+RSI>60+20SMA)",
+            "Strategy": "Chartink + 52W High (<=10%)",
             "Exit Model": "Tiered (+25% Lock & ST Flip)",
             "Horizon": h_name,
-            "Ending Equity": f"₹{tiered_res['ending_equity']:,.2f}",
-            "Return %": f"{tiered_res['total_return_pct']:+.2f}%",
-            "CAGR %": f"{tiered_res['cagr_pct']:.2f}%",
-            "Max DD %": f"{tiered_res['max_drawdown_pct']:.2f}%",
-            "Win Rate %": f"{tiered_res['win_rate']:.1f}%",
-            "Profit Factor": f"{tiered_res['profit_factor']:.2f}",
-            "Trades": tiered_res['total_trades'],
-            "Avg Hold Days": f"{tiered_res['avg_holding_days']:.1f}d",
+            "Ending Equity": f"₹{tiered_52w_res['ending_equity']:,.2f}",
+            "Return %": f"{tiered_52w_res['total_return_pct']:+.2f}%",
+            "CAGR %": f"{tiered_52w_res['cagr_pct']:.2f}%",
+            "Max DD %": f"{tiered_52w_res['max_drawdown_pct']:.2f}%",
+            "Win Rate %": f"{tiered_52w_res['win_rate']:.1f}%",
+            "Profit Factor": f"{tiered_52w_res['profit_factor']:.2f}",
+            "Trades": tiered_52w_res['total_trades'],
+            "Avg Hold Days": f"{tiered_52w_res['avg_holding_days']:.1f}d",
         })
 
     df_res = pd.DataFrame(results)

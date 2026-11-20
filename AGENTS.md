@@ -516,6 +516,11 @@ A comprehensive backtest was conducted across the Nifty 500 universe (capital �
 3. **Comparison with Baseline Donchian**:
    - The Baseline Donchian generates higher ultimate compounding (+425.9% vs +354.6%) because the 50-day Donchian High enters earlier at the base breakout rather than waiting for RSI > 60 and SMA 20 > 200 crossover.
    - However, the Chartink Supertrend strategy provides a significantly **smoother equity curve with a sub-19% multi-year drawdown**, making it an exceptional alternative for risk-sensitive trend and momentum traders.
+4. **52-Week High Proximity Filter Study on Chartink Supertrend**:
+   - In medium horizons (Last 12 Months and Last 2 Years), adding a 52-Week High proximity filter improves performance:
+     - **Last 12 Months**: 52W High ($\le 15\%$) increased return from **+38.98% to +42.51%** and boosted Profit Factor from **3.00 to 3.47**.
+     - **Last 2 Years**: 52W High ($\le 10\%$) increased return from **+28.62% to +34.08%** and compressed Max Drawdown from **-18.67% down to -14.90%**.
+   - However, across a **5-Year multi-cycle horizon**, Pure Chartink without 52W filter generated **+354.62%** vs **+272.15%** with 52W High ($\le 10\%$). This occurs because $SMA(20) > SMA(200)$ captures early stage-2 turnaround leaders emerging from deep bear market bottoms when they are still 20–35% below their all-time 52-week highs. Requiring 52W high proximity delays entry into these early turnaround multi-baggers.
 
 ---
 
@@ -606,7 +611,9 @@ A comprehensive multi-horizon backtest was conducted across the Nifty 500 univer
    - Baseline Donchian allows runners to breathe using the broader 50-day Donchian structure and 50 EMA stage-2 filter, capturing the massive right tail of returns.
 3. **The 10 EMA Exit is Too Hyperactive for Daily Swings**:
    - Exiting on `Close < 10 EMA` generates 522 trades over 5 years and experiences severe whipsaws during choppy sideways regimes, dropping 5-year CAGR to just +7.3%.
-4. **Summary & Recommendation**:
+4. **52-Week High Proximity Significantly Upgrades Oliver Kell**:
+   - When Oliver Kell is coupled with the **Within 10% of 52-Week High filter**, 5-year return jumps from **+96.69% to +160.71% (+64% profit increase)**, 5-year Max Drawdown drops from **-21.10% down to -15.69%**, and win rate rises from **34.4% to 41.2%**.
+5. **Summary & Recommendation**:
    - Oliver Kell's "Base 'n Break" setup is an elite tactical entry for tight risk definition (3–5% base stops).
    - However, for swing/position traders in Indian equities seeking high long-term compounding, **exiting strictly at the 20 EMA closes winners prematurely**. Combining Kell's "Base 'n Break" entry with the repository's wider stage-2 trailing exit (50 EMA / Donchian Channel) achieves the ideal balance between tight initial risk and riding monster multi-baggers.
 
