@@ -613,9 +613,69 @@ A comprehensive multi-horizon backtest was conducted across the Nifty 500 univer
    - Exiting on `Close < 10 EMA` generates 522 trades over 5 years and experiences severe whipsaws during choppy sideways regimes, dropping 5-year CAGR to just +7.3%.
 4. **52-Week High Proximity Significantly Upgrades Oliver Kell**:
    - When Oliver Kell is coupled with the **Within 10% of 52-Week High filter**, 5-year return jumps from **+96.69% to +160.71% (+64% profit increase)**, 5-year Max Drawdown drops from **-21.10% down to -15.69%**, and win rate rises from **34.4% to 41.2%**.
-5. **Summary & Recommendation**:
-   - Oliver Kell's "Base 'n Break" setup is an elite tactical entry for tight risk definition (3–5% base stops).
-   - However, for swing/position traders in Indian equities seeking high long-term compounding, **exiting strictly at the 20 EMA closes winners prematurely**. Combining Kell's "Base 'n Break" entry with the repository's wider stage-2 trailing exit (50 EMA / Donchian Channel) achieves the ideal balance between tight initial risk and riding monster multi-baggers.
+
+---
+
+### 🔬 WEEKLY MOMENTUM BREAKOUT (CHARTINK) & DUAL EXIT BENCHMARK
+
+A comprehensive multi-horizon study was conducted across the Nifty 500 universe (capital ₹1,00,000, 10 slots, max 15% allocation cap, max 3 per sector) testing the **Weekly Momentum Breakout Scanner**:
+- **Timeframe**: Weekly bars (`W-FRI` resampled from daily candles).
+- **Scanner Entry Conditions**:
+  1. `Weekly Close > 1 week ago High` ($Close_W > High_{W-1}$)
+  2. `Weekly % Change > 5%` ($\Delta\%_W > 5.0\%$)
+  3. `1 week ago Close > 2 weeks ago High` ($Close_{W-1} > High_{W-2}$)
+  4. Institutional price filter: $Close \ge ₹100$
+- **Exit Variations Evaluated**:
+  1. **Exit 1 (Supertrend Flip)**: Close below Weekly Supertrend(10, 3) line.
+  2. **Exit 1 Alt (Supertrend 7, 3 Flip)**: Close below Weekly Supertrend(7, 3) line.
+  3. **Exit 2A (Prev Week Low)**: Weekly Close < Previous Week Low ($Close_W < Low_{W-1}$).
+  4. **Exit 2B (Prev Week Close)**: Weekly Close < Previous Week Close ($Close_W < Close_{W-1}$).
+  5. **Exit 1 + Protective Stop**: Supertrend(10, 3) Flip with -8% emergency hard stop.
+  6. **Enhanced Weekly Model**: Supertrend(10, 3) + -8% Stop + Within 10% of 52-Week High.
+
+| Metric & Horizon | Baseline (Daily 50D, 2-Tier Exit) | Exit 1: ST(10,3) Flip | Exit 1 Alt: ST(7,3) Flip | Exit 2A: Close < Prev Low | Exit 2B: Close < Prev Close | Exit 1 + -8% Stop |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **2026 YTD Return** | **+39.91%** (CAGR 49.1%) | -2.24% (CAGR -2.6%) | -4.26% (CAGR -4.9%) | -15.68% (CAGR -17.9%)| -8.27% (CAGR -9.5%) | +4.13% (CAGR 4.8%) |
+| **2026 YTD Max DD** | **-11.72%** | -14.05% | -13.92% | -25.88% | -17.53% | -14.02% |
+| **2026 YTD Win Rate** | 37.0% (46 trades) | 15.4% (13 trades) | 8.3% (12 trades) | 29.9% (77 trades) | **37.3%** (166 trades)| 12.5% (32 trades) |
+| **Last 12M Return** | **+49.84%** (CAGR 50.6%) | +20.66% (CAGR 20.7%)| +18.95% (CAGR 19.0%)| -11.98% (CAGR -12.0%)| -8.36% (CAGR -8.4%) | +11.87% (CAGR 11.9%)|
+| **Last 12M Max DD** | -11.31% | -14.80% | -13.69% | -25.30% | -17.54% | **-10.07%** |
+| **Last 12M Win Rate** | **42.1%** (57 trades) | 28.6% (14 trades) | 25.0% (12 trades) | 29.1% (86 trades) | 35.1% (191 trades)| 13.6% (22 trades) |
+| **Last 2Y Return** | **+79.42%** (CAGR 34.7%) | +10.56% (CAGR 5.2%) | -12.67% (CAGR -6.5%)| -21.03% (CAGR -11.1%)| -14.08% (CAGR -7.3%)| +8.97% (CAGR 4.4%) |
+| **Last 2Y Max DD** | **-12.81%** | -25.45% | -27.13% | -27.05% | -19.97% | -19.63% |
+| **Last 2Y Profit Factor** | **2.99** | 0.88 | 0.39 | 0.71 | 0.85 | 0.63 |
+| **Last 5Y Return** | **+425.90%** (CAGR 40.1%) | +127.62% (CAGR 17.8%)| +40.62% (CAGR 7.0%)| +94.32% (CAGR 14.1%)| +3.60% (CAGR 0.7%) | **+233.23%** (CAGR 27.1%)|
+| **5-Year Ending Equity** | **₹5,25,896.64** | ₹2,27,615.46 | ₹1,40,620.15 | ₹1,94,315.11 | ₹1,03,603.72 | **₹3,33,228.76** |
+| **5-Year Max DD** | **-29.53%** | -42.25% | -39.78% | -39.81% | -34.12% | -33.62% |
+| **5-Year Profit Factor** | **2.82** | 2.03 | 1.24 | 1.21 | 1.01 | **2.15** |
+| **5-Year Win Rate** | **43.8%** (288 trades) | 39.3% (84 trades) | 30.9% (81 trades) | 36.6% (432 trades) | 35.2% (1,039 trades)| 29.7% (111 trades) |
+| **Avg Holding Duration** | 47.0 days | 29.5 weeks (~7 mos) | 29.8 weeks (~7 mos) | 5.5 weeks (~1.3 mos) | 2.0 weeks (~14 days)| 21.4 weeks (~5 mos) |
+
+---
+
+#### 🔍 Critical Analytical Insights & Mechanics:
+
+1. **The "Whipsaw Meat-Grinder" of Exit 2B (Close < Prev Week Close)**:
+   - Exiting immediately when the current weekly candle closes below the prior week's close produces severe whipsaw losses (+3.60% across 5 years, -14.08% over 2 years, -8.27% in 2026 YTD).
+   - **Reason**: Natural, healthy momentum advances rarely advance in a straight line for 15 consecutive weeks without a single red week. After 2 consecutive expansion weeks (>5%), stocks frequently print an inside or slight pause week before resuming. Exit 2B sells right at the pullback dip, incurring high churn (1,039 trades) and transaction drag.
+2. **Exit 2A (Close < Prev Week Low) Exits Too Early on Standard Base Retests**:
+   - Exit 2A improves slightly over 2B (+94.32% over 5 years), but suffered net losses in 2026 YTD (-15.68%) and the last 2 years (-21.03%).
+   - Normal base breakouts retest the pivot zone, causing weekly closes to dip just under the prior breakout week's low before launching into major secular uptrends.
+3. **Exit 1 (Supertrend Flip) Captures Monster Multi-Baggers but Lacks Early Downside Armor**:
+   - Supertrend(10, 3) lets runners compound over an average of **29.5 weeks (~7 months)**, turning ₹1.00L into **₹2.28 Lakhs (+127.62%)** over 5 years.
+   - However, in bear markets or sudden corrections, weekly Supertrend lags significantly, resulting in a steep **-42.25% Max Drawdown**.
+4. **The Power of the Hybrid Protective Stop (Supertrend + -8% Hard Stop)**:
+   - When weekly Supertrend(10, 3) is paired with an **-8% protective stop loss**, 5-year compounding leaps from **+127.6% to +233.23% (₹3,33,229)**, and Max Drawdown is compressed from **-42.25% down to -33.62%**.
+   - It cuts false breakouts early while allowing genuine multi-month trends to compound safely.
+5. **Enhanced Weekly Model (Adding 52-Week High Proximity $\le 10\%$)**:
+   - When the weekly scanner is restricted to stocks within 10% of their 52-week high with the -8% protective stop:
+     - 5-Year Return reaches **+250.79% (₹3,50,790 ending equity)**.
+     - 5-Year Max Drawdown drops to **-30.78%**.
+     - Profit Factor rises to **2.28**.
+6. **Comparison with Repository Baseline**:
+   - While the weekly Supertrend model with protective stops is a viable low-maintenance weekly system (+233.2% 5Y return, ~20 trades/year), the **Daily 50D Baseline (+425.90%, -29.5% DD)** remains superior because daily execution captures intraday pivot acceleration and executes the two-tier profit lock (+25% gain & 20 EMA break) with zero weekly lag.
+
+
 
 
 
