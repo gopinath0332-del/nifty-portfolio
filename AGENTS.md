@@ -117,6 +117,10 @@ nifty-portfolio/
    # Or run standalone Nifty 50 backtest:
    python scripts/backtest.py --universe nifty50 --start 2026-01-01
    ```
+9. **Run Oliver Kell Swing Strategy Multi-Horizon Benchmark:**
+   ```powershell
+   python scripts/test_oliver_kell.py
+   ```
 
 ---
 
@@ -553,6 +557,58 @@ A multi-horizon backtest was conducted across the Nifty 500 universe (capital �
 3. **Conclusion**:
    - Extreme oscillator filters ($> 70$ or $> 110$) suffer from buying late in the impulse wave.
    - For momentum breakouts, entering early at the base breakout (Donchian High) or moderate momentum ($RSI > 60$) produces significantly superior multi-year compounding.
+
+---
+
+### 🔬 OLIVER KELL SWING TRADING ("BASE 'N BREAK") BENCHMARK & RESEARCH
+
+A comprehensive multi-horizon backtest was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) implementing **Oliver Kell's 2020 US Investing Championship (+941.1%) Swing Trading Strategy**:
+- **Core EMAs**: 10 EMA (fast momentum) and 20 EMA (trend backbone).
+- **Trend Alignment**: Price > 10 EMA > 20 EMA + Nifty 500 Market Regime Filter (Index > 50 EMA).
+- **"Base 'n Break" Setup**:
+  1. Compact 3-to-7-day base (tightness $\le 8.0\%$).
+  2. Base formed near 10/20 EMA support.
+  3. Breakout over Base High with volume expansion ($RVOL \ge 1.2$).
+  4. Initial stop loss placed at the low of the consolidation base.
+- **Exits Evaluated**:
+  - **Variant A (Kell 20 EMA Exit)**: Close below 20 EMA (or Exhaustion Extension profit-taking $\ge +15\%$ above 10 EMA).
+  - **Variant B (Kell 10 EMA Exit)**: Faster momentum exit on Close below 10 EMA.
+
+| Metric & Horizon | Baseline Donchian (50D High, 2-Tier Exit) | Oliver Kell (Base 'n Break, 20 EMA Exit) | Oliver Kell Fast (Base 'n Break, 10 EMA Exit) |
+| :--- | :--- | :--- | :--- |
+| **2026 YTD Return** | **+39.91%** (CAGR 49.1%) | +18.47% (CAGR 22.0%) | +11.53% (CAGR 13.5%) |
+| **2026 YTD Max Drawdown**| -11.72% | **-6.47%** (Sub-7% DD) | -7.38% |
+| **2026 YTD Win Rate** | 37.0% (46 trades) | **47.6%** (63 trades) | 44.4% (81 trades) |
+| **Last 12M Return** | **+49.84%** (CAGR 50.6%) | +25.67% (CAGR 25.8%) | +16.47% (CAGR 16.5%) |
+| **Last 12M Max Drawdown**| -11.31% | **-6.73%** | -8.20% |
+| **Last 12M Win Rate** | 42.1% (57 trades) | **47.6%** (82 trades) | 42.7% (103 trades) |
+| **Last 2Y Return** | **+79.42%** (CAGR 34.7%) | +27.21% (CAGR 12.8%) | +5.43% (CAGR 2.6%) |
+| **Last 2Y Max Drawdown** | -12.81% | **-11.07%** | -18.27% |
+| **Last 2Y Profit Factor** | **2.99** | 1.50 | 1.08 |
+| **Last 5Y Return** | **+425.90%** (CAGR 40.1%) | +96.69% (CAGR 14.5%) | +42.52% (CAGR 7.3%) |
+| **5-Year Ending Equity** | **₹5,25,896.64** | ₹1,96,691.80 | ₹1,42,520.10 |
+| **5-Year Max Drawdown** | -29.53% | **-21.10%** | **-18.97%** |
+| **5-Year Profit Factor** | **2.82** | 1.48 | 1.19 |
+| **5-Year Total Trades** | 288 trades | 418 trades | 522 trades |
+| **5-Year Win Rate** | **43.8%** | 34.4% | 32.2% |
+
+#### Key Analytical Takeaways:
+1. **Outstanding Drawdown Compression (Capital Preservation Edge)**:
+   - The primary strength of Oliver Kell's 20 EMA exit is **unparalleled drawdown control**:
+     - 2026 YTD Max Drawdown was slashed from **-11.72% down to -6.47%**.
+     - 12-Month Max Drawdown was contained to **-6.73%**.
+     - Multi-year 5-year Max Drawdown was compressed from **-29.53% down to -21.10%**.
+   - For swing traders who cannot tolerate double-digit portfolio drawdowns, Oliver Kell's tight EMA stops offer a very gentle equity curve.
+2. **The "Short-Leash" Premature Exit Drag on Multi-Baggers**:
+   - Why did the Baseline beat Kell by **+425.9% vs +96.7%** over 5 years?
+   - In the Indian stock market (Nifty 500), leading stage-2 momentum stocks frequently experience 3-to-5-day routine base consolidations or brief intraday touches below the 20 EMA before continuing their 100% to 300% multi-month secular runs.
+   - Oliver Kell's rule exits immediately when daily close violates the 20 EMA (average hold time is just 14–22 days). As a result, winning trades are terminated too early, missing the monster second and third stage legs.
+   - Baseline Donchian allows runners to breathe using the broader 50-day Donchian structure and 50 EMA stage-2 filter, capturing the massive right tail of returns.
+3. **The 10 EMA Exit is Too Hyperactive for Daily Swings**:
+   - Exiting on `Close < 10 EMA` generates 522 trades over 5 years and experiences severe whipsaws during choppy sideways regimes, dropping 5-year CAGR to just +7.3%.
+4. **Summary & Recommendation**:
+   - Oliver Kell's "Base 'n Break" setup is an elite tactical entry for tight risk definition (3–5% base stops).
+   - However, for swing/position traders in Indian equities seeking high long-term compounding, **exiting strictly at the 20 EMA closes winners prematurely**. Combining Kell's "Base 'n Break" entry with the repository's wider stage-2 trailing exit (50 EMA / Donchian Channel) achieves the ideal balance between tight initial risk and riding monster multi-baggers.
 
 
 
