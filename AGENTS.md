@@ -675,6 +675,62 @@ A comprehensive multi-horizon study was conducted across the Nifty 500 universe 
 6. **Comparison with Repository Baseline**:
    - While the weekly Supertrend model with protective stops is a viable low-maintenance weekly system (+233.2% 5Y return, ~20 trades/year), the **Daily 50D Baseline (+425.90%, -29.5% DD)** remains superior because daily execution captures intraday pivot acceleration and executes the two-tier profit lock (+25% gain & 20 EMA break) with zero weekly lag.
 
+---
+
+### 🔬 WEEKLY 10 EMA / 20 EMA CROSSOVER STRATEGY BENCHMARK & RESEARCH
+
+A comprehensive multi-horizon study was conducted across the Nifty 500 universe (capital ₹1,00,000, 10% equal allocation per slot, max 10 concurrent slots, max 3 stocks per sector, minimum stock price ₹100) backtesting the user's **Weekly EMA Crossover Strategy**:
+- **Timeframe**: Weekly (resampled Friday close bars from daily candles).
+- **Entry Condition**: Weekly 10 EMA crosses above Weekly 20 EMA ($EMA_{10}[W] > EMA_{20}[W]$ and $EMA_{10}[W-1] \le EMA_{20}[W-1]$).
+- **Exit Condition**: Weekly 10 EMA crosses below Weekly 20 EMA ($EMA_{10}[W] < EMA_{20}[W]$ and $EMA_{10}[W-1] \ge EMA_{20}[W-1]$).
+- **Execution Timing**: Signals generated at Friday close $W$, executed at Monday open $W+1$.
+
+#### Multi-Horizon Benchmark Matrix (All 4 Standard Horizons):
+
+| Metric & Horizon | Baseline (Daily 50D Donchian) | Pure Weekly 10/20 EMA Cross | Weekly 10/20 Cross + -8% Stop | Weekly 10/20 Cross + Fast Exit (Close < 20 EMA) | Weekly 10/20 Cross + Market Regime | Weekly 10/20 Cross + 52W High Filter + -8% Stop |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **2026 YTD Return** | **+39.91%** (CAGR 49.1%) | -6.59% (CAGR -7.6%) | -11.93% (CAGR -13.7%) | -11.30% (CAGR -12.9%) | -14.21% (CAGR -16.2%) | -5.65% (CAGR -6.5%) |
+| **2026 YTD Max DD** | **-11.72%** | -16.82% | -19.92% | -14.38% | -17.56% | -14.28% |
+| **2026 YTD Win Rate** | **37.0%** (46 trades) | 10.7% (28 trades) | 7.7% (39 trades) | 28.6% (49 trades) | 3.7% (27 trades) | 15.6% (32 trades) |
+| **2026 YTD Profit Factor** | **2.87** | 0.10 | 0.10 | 0.53 | 0.01 | 0.11 |
+| **Last 12M Return** | **+49.84%** (CAGR 50.6%) | +13.44% (CAGR 13.4%) | -2.54% (CAGR -2.5%) | -1.83% (CAGR -1.8%) | +9.87% (CAGR 9.9%) | -4.39% (CAGR -4.4%) |
+| **Last 12M Max DD** | -11.31% | -13.79% | **-10.83%** | -14.60% | -12.72% | -17.98% |
+| **Last 12M Win Rate** | **42.1%** (57 trades) | 19.0% (21 trades) | 13.8% (29 trades) | 27.1% (48 trades) | 15.0% (20 trades) | 16.7% (30 trades) |
+| **Last 12M Profit Factor** | **3.24** | 0.24 | 0.19 | 0.91 | 0.15 | 0.23 |
+| **Last 2Y Return** | **+79.42%** (CAGR 34.7%) | -19.51% (CAGR -10.3%) | -4.07% (CAGR -2.1%) | -20.58% (CAGR -10.9%) | -7.45% (CAGR -3.8%) | +7.28% (CAGR 3.6%) |
+| **Last 2Y Max DD** | **-12.81%** | -24.55% | -16.45% | -25.65% | -23.89% | -16.67% |
+| **Last 2Y Win Rate** | **47.1%** (102 trades) | 27.1% (48 trades) | 21.7% (60 trades) | 25.7% (105 trades) | 12.5% (40 trades) | 26.0% (50 trades) |
+| **Last 2Y Profit Factor** | **2.99** | 0.39 | 0.57 | 0.60 | 0.19 | 0.77 |
+| **Last 5Y Return** | **+425.90%** (CAGR 40.1%) | +142.10% (CAGR 19.3%)| +140.88% (CAGR 19.1%)| +38.54% (CAGR 6.7%) | +125.52% (CAGR 17.6%)| +94.10% (CAGR 14.1%) |
+| **5-Year Ending Equity** | **₹5,25,896.64** | ₹2,42,099.18 | ₹2,40,875.56 | ₹1,38,539.79 | ₹2,25,524.02 | ₹1,94,104.32 |
+| **5-Year Max DD** | -29.53% | -26.19% | **-26.18%** | -33.61% | -32.49% | -25.23% |
+| **5-Year Win Rate** | **43.8%** (288 trades) | 33.0% (94 trades) | 26.4% (110 trades) | 31.6% (215 trades) | 27.2% (81 trades) | 28.2% (110 trades) |
+| **5-Year Profit Factor** | **2.82** | 2.12 | 1.53 | 1.25 | 1.58 | 1.60 |
+| **5-Year Payout Ratio** | 3.30x | **6.63x** | 5.83x | 3.27x | 7.94x | 5.40x |
+| **Average Holding Period** | 47.0 days | 25.5 weeks (~6 mos) | 21.3 weeks (~5 mos) | 11.4 weeks (~2.8 mos)| 26.3 weeks (~6.5 mos)| 21.0 weeks (~5 mos) |
+
+---
+
+#### 🔍 Quantitative Mechanics & Failure Modes of Weekly EMA Crossover:
+
+1. **The Double-Lag Problem (Late Entry + Late Exit)**:
+   - **Entry Lag**: A weekly 10 EMA requires roughly 10 weeks of data (~50 trading days), and 20 EMA requires 20 weeks (~100 trading days). When 10 EMA crosses above 20 EMA, the underlying stock has already been advancing for 6 to 12 weeks and is frequently **+30% to +60% above its breakout base**. You are buying near the peak of the primary wave.
+   - **Exit Lag**: When the stock reverses into a distribution phase or correction, the price must plunge substantially and remain depressed for multiple weeks before the weekly 10 EMA crosses below the 20 EMA. Winners regularly surrender 20% to 35% of their accumulated profits before the death cross confirms.
+2. **Brutal Whipsaws in Range-Bound / Rotational Regimes (2024–2026)**:
+   - In consolidating or choppy market environments (such as 2024 to 2026), moving average crossovers produce catastrophic false breakouts:
+     - 2026 YTD Win Rate plunged to **10.7%** (only 3 winners out of 28 trades) with a net return of **-6.59%**.
+     - Last 2 Years produced a **-19.51% net loss** with a win rate of **27.1%** and a dismal Profit Factor of **0.39**.
+3. **Monster Trend Exploitation in Strong Secular Bull Regimes (5-Year Horizon)**:
+   - Despite low win rates (33.0%), the strategy achieved **+142.10%** over 5 years (CAGR +19.26%) turning ₹1.00L into ₹2.42 Lakhs.
+   - This was driven entirely by an extraordinary **6.63x Payout Ratio** (Average Winner: +58.4% vs Average Loser: -8.8%). When a stock entered a monster secular multi-year bull run (e.g. HAL, Trent, BEL in 2021-2023), holding the position for 6 to 12 months generated massive compound gains.
+4. **Why "Faster Exit" (Close < 20 EMA) Fails**:
+   - Exiting on weekly Close < 20 EMA cut 5-year return from **+142.1% down to +38.54%** and increased trades from 94 to 215.
+   - Normal, healthy trend pullbacks routinely test or dip slightly beneath the 20 EMA on weekly closes before resuming higher. Selling on every dip causes chronic churn and premature shakeouts of top winners.
+5. **Why Baseline Daily 50D Donchian Crushes Weekly EMA Crossover**:
+   - The Baseline generates **+425.90% vs +142.10%** across 5 years, **+79.42% vs -19.51%** over 2 years, and **+39.91% vs -6.59%** in 2026 YTD.
+   - **Key Reason**: The Baseline enters at the exact initiation of the breakout (50-day Donchian High), protects downside immediately with an -8% stop loss and 20-day tenure cut, and locks in profits on mature winners via the two-tier profit lock (+25% gain & 20 EMA break) rather than waiting for a sluggish moving average death cross.
+
+
 
 
 
