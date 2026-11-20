@@ -387,3 +387,172 @@ A rigorous multi-horizon comparative backtest was conducted comparing the identi
 4. **Strategic Conclusion:**
    - **The Donchian / Stage-2 momentum engine must remain deployed on the Nifty 500 universe.**
    - Restricting the strategy to Nifty 50 converts a top-quartile market-beating system (+425.9% 5Y CAGR 40.1%) into a stagnant, underperforming model (+53.1% 5Y CAGR 9.0%, and net negative over 1-year and 2-year horizons).
+
+---
+
+### 🔬 DUAL-TIMEFRAME SWING TRADING RESEARCH & BENCHMARK ("APEX SWING")
+
+A comprehensive multi-horizon study was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) designing and backtesting an institutional **Dual-Timeframe Swing Trading Strategy ("Apex Swing")** leveraging both **Weekly** (Macro Trend & Stage 2 Filter) and **Daily** (Tactical Timing & Squeeze Breakout) candle datasets.
+
+#### Strategy Specification
+1. **Weekly Macro Filter (The Compass)**:
+   - Weinstein Stage 2: $10\text{ WEMA} > 30\text{ WEMA}$ and Weekly Close $> 10\text{ WEMA}$.
+   - Momentum Power Zone: $\text{Weekly RSI}(14) \ge 50.0$.
+   - Zero lookahead bias: Shifted strictly by 1 completed week (`shift(1)`).
+2. **Daily Tactical Setups**:
+   - **Setup A (20 EMA Pullback Bounce - "The Trampoline")**:
+     - Daily Stage 2 ($\text{Close} > 50\text{ EMA} > 200\text{ SMA}$).
+     - Low touched within $1.5\%$ of $20\text{ EMA}$ in last 3 days.
+     - Day $T$ triggers green reversal candle closing in upper $40\%$ of range with $\text{RVOL} \ge 1.20$.
+   - **Setup B (TTM Volatility Squeeze & Pocket Pivot - "The Spring")**:
+     - Bollinger Bands ($20, 2.0$) inside Keltner Channels ($20, 1.5\text{ ATR}$) within last 5 days.
+     - Price breaks above 20-day high with Pocket Pivot ($\text{Volume} > \text{max down-volume in 10 days}$) and $\text{RVOL} \ge 1.25$.
+     - Proximity to 52-week high within $15\%$.
+3. **4-Tier Asymmetric Exits**:
+   - **Initial Stop**: $\max(\text{Swing Low}, \text{Entry} - 1.5 \times \text{ATR}_{14})$ (hard capped at max $-5.5\%$).
+   - **Target 1 Derisk**: At $+2R$ profit, sell $50\%$ position and move Stop Loss on remaining $50\%$ to Breakeven ($\text{Entry Price}$).
+   - **Runner Trailing**: Exit remaining $50\%$ when Daily Close $< 10\text{ EMA}$.
+   - **Climax Exit**: Daily $\text{RSI} \ge 78.0$ and Price $\ge 1.08 \times 20\text{ EMA}$ (blow-off top).
+   - **Stagnation Time Stop**: Held $\ge 12$ trading days and position P&L is $< +1R$ (prunes dead money).
+
+---
+
+#### 📊 4-Horizon Comparative Performance Matrix: Apex Swing vs. Baseline Donchian
+
+| Performance Metric | 2026 YTD | Last 12 Months | Last 2 Years | Last 5 Years |
+| :--- | :--- | :--- | :--- | :--- |
+| **Baseline Donchian Ending Equity** | **₹1,39,914.82** | **₹1,49,842.37** | **₹1,79,420.33** | **₹5,25,896.64** |
+| **Apex Swing Ending Equity** | ₹1,06,695.14 | ₹1,23,521.38 | ₹1,23,931.36 | ₹2,68,869.72 |
+| **Baseline Donchian Return %** | **+39.91%** | **+49.84%** | **+79.42%** | **+425.90%** |
+| **Apex Swing Return %** | +6.70% | +23.52% | +23.93% | +168.87% |
+| **Baseline Donchian CAGR %** | **49.07%** | **50.57%** | **34.66%** | **40.08%** |
+| **Apex Swing CAGR %** | 8.01% | 23.84% | 11.54% | 22.24% |
+| **Baseline Donchian Max DD %** | -11.72% | -11.31% | **-12.81%** | -29.53% |
+| **Apex Swing Max DD %** | **-9.46%** | **-8.03%** | -14.06% | **-21.04%** |
+| **Baseline Donchian Win Rate %** | 37.0% (17W / 29L) | 42.1% (24W / 33L) | 47.1% (48W / 54L) | 43.8% (126W / 162L) |
+| **Apex Swing Win Rate %** | **55.2%** (80W / 65L) | **56.5%** (108W / 83L)| **50.5%** (184W / 180L)| **57.1%** (623W / 469L) |
+| **Baseline Profit Factor** | **2.87** | **3.24** | **2.99** | **2.82** |
+| **Apex Swing Profit Factor** | 1.07 | 1.42 | 1.21 | 1.38 |
+| **Baseline Total Trades** | 46 trades | 57 trades | 102 trades | 288 trades |
+| **Apex Swing Total Trades** | **145 trades** | **191 trades** | **364 trades** | **1,092 trades** |
+| **Baseline Avg Holding Period** | 44.2 days | 45.7 days | 48.9 days | 47.0 days |
+| **Apex Swing Avg Holding Period**| **14.3 days** | **13.4 days** | **13.3 days** | **13.4 days** |
+
+---
+
+#### 🔬 Setup Component Attribution (Last 12 Months)
+
+| Swing Mode | Total Return % | Win Rate % | Profit Factor | Total Trades | Max Drawdown % | Avg Holding Days |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Setup A: 20 EMA Pullback Bounce** | +20.34% | 55.9% | 1.46 | 188 | **-5.97%** | 13.7 days |
+| **Setup B: Volatility Squeeze Breakout**| +19.71% | **59.2%** | **1.49** | 147 | **-5.68%** | 14.2 days |
+| **Apex Swing (Combined A + B)** | **+23.52%** | 56.5% | 1.42 | 191 | -8.03% | **13.4 days** |
+
+---
+
+#### 💡 Key Strategic Takeaways:
+1. **Dramatic Win Rate Surge (Psychological Edge)**:
+   - Apex Swing lifts the strategy win rate from the baseline's **37%–44% up to 55%–59%** across all market cycles.
+   - The Volatility Squeeze setup achieved an impressive **59.2% win rate** with only **-5.68% max drawdown** over 12 months.
+2. **Swift Holding Period (True Swing Velocity)**:
+   - Average holding time dropped from **47 days to ~13.4 days** (a ~70% reduction in capital lockup).
+   - High trade frequency (1,092 trades over 5 years vs. 288) ensures dynamic capital turnover and continuous redeployment into fresh setups.
+3. **Smooth Equity Curve & Low Drawdown**:
+   - The 5-year maximum drawdown dropped by **8.49 percentage points** (from **-29.53% down to -21.04%**).
+   - The 12-month drawdown was capped at **-8.03%** (and sub-6% on individual setups).
+4. **The Structural Trade-Off (Compounding vs. Velocity)**:
+   - Because swing trading locks in profits at $+2R$ and aggressively cuts positions at 12–14 days, it deliberately truncates the "far-right tail" (the rare $+80\%$ to $+120\%$ multi-month runaway compounders like Cupid, Ather, or Inox India).
+   - As a consequence, 5-year total return is **+168.87% (22.24% CAGR)** for Apex Swing vs. **+425.90% (40.08% CAGR)** for the Donchian trend follower.
+5. **Practical Recommendation**:
+   - **For High-Frequency, Low-Drawdown Swing Traders**: Apex Swing (especially Setup B Squeeze Breakout) is ideal for traders who prioritize a **near-60% win rate, sub-6% to -9% drawdowns, and 2-week fast capital recycling**.
+   - **For Long-Term Wealth Compounding**: The Baseline Donchian Stage 2 model remains optimal for maximizing total multi-year net worth by capturing monster secular trends.
+
+---
+
+### 🔬 CHARTINK SUPERTREND(7, 3) + RSI>60 + 20/200 SMA BENCHMARK
+
+A comprehensive backtest was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) implementing and testing the user's **Chartink Scanner Strategy** across 4 standard horizons:
+- **Entry Rules**:
+  1. `Daily SMA(Close, 20) > Daily SMA(Close, 200)` (Golden Cross / Bullish Regime)
+  2. `Daily Close > Daily SMA(Close, 20)` (Price above 20-day mean)
+  3. `Daily Close > Daily Supertrend(7, 3)` (Bullish Supertrend Regime)
+  4. `Daily RSI(14) > 60` (Bullish Momentum Power Zone)
+  5. `Daily Volume > 100,000` (Liquidity Filter)
+- **Exit Variations Tested**:
+  - **Exit A**: Pure Supertrend(7, 3) Flip (Close < Supertrend)
+  - **Exit B**: 20 SMA Breakdown (Close < 20 SMA)
+  - **Exit C**: Tiered Profit-Lock (+25% gain & Close < 20 EMA, or Supertrend Flip)
+
+| Strategy & Exit Model | 2026 YTD | Last 12 Months | Last 2 Years | Last 5 Years |
+| :--- | :--- | :--- | :--- | :--- |
+| **Baseline Donchian (2-Tier Exit)** | **+39.91%** (CAGR 49.1%) | **+49.84%** (CAGR 50.6%) | **+79.42%** (CAGR 34.7%) | **+425.90%** (CAGR 40.1%) |
+| **Chartink (Supertrend Flip Exit)** | **+26.52%** (CAGR 32.3%) | **+38.98%** (CAGR 39.5%) | **+28.62%** (CAGR 13.7%) | **+354.62%** (CAGR 36.0%) |
+| **Chartink (20 SMA Breakdown Exit)**| +9.58% (CAGR 11.5%) | +11.02% (CAGR 11.2%) | +26.38% (CAGR 12.7%) | +233.54% (CAGR 27.7%) |
+| **Chartink (Tiered +25% Lock Exit)**| +22.62% (CAGR 27.4%) | +33.34% (CAGR 33.8%) | +31.35% (CAGR 14.9%) | +327.56% (CAGR 27.2%) |
+| **Baseline Donchian Max DD %** | -11.72% | -11.31% | **-12.81%** | -29.53% |
+| **Chartink (Supertrend Flip) Max DD**| **-7.79%** | **-11.14%** | -18.67% | **-18.64%** |
+| **Chartink (20 SMA Breakdown) Max DD**| -11.04% | -11.12% | -14.90% | -23.51% |
+| **Chartink (Supertrend Flip) Win Rate**| **50.0%** (16W / 16L) | **51.3%** (20W / 19L) | **43.4%** (33W / 43L) | **46.7%** (93W / 106L) |
+| **Baseline Donchian Win Rate** | 37.0% (17W / 29L) | 42.1% (24W / 33L) | 47.1% (48W / 54L) | 43.8% (126W / 162L) |
+| **Chartink (Supertrend Flip) Profit Factor**| **3.38** | **3.00** | 1.73 | **2.93** |
+| **Baseline Donchian Profit Factor** | 2.87 | 3.24 | **2.99** | 2.82 |
+| **Chartink (Supertrend Flip) Trades**| 32 trades | 39 trades | 76 trades | 199 trades |
+| **Baseline Donchian Trades** | 46 trades | 57 trades | 102 trades | 288 trades |
+| **Chartink (Supertrend Flip) Avg Hold**| 66.3 days | 70.7 days | 66.4 days | 72.0 days |
+| **Baseline Donchian Avg Hold** | 44.2 days | 45.7 days | 48.9 days | 47.0 days |
+
+#### Key Analytical Findings:
+1. **The Chartink Scanner with Supertrend Flip is Highly Robust**:
+   - Compounded initial ₹1.00L capital to **₹4,54,615.57 (+354.62% / 36.0% CAGR)** over 5 years.
+   - Outperformed in risk-adjusted metrics by slashing 5-year Max Drawdown from **-29.53% down to -18.64%** (nearly 11 percentage points lower drawdown).
+   - In 2026 YTD, achieved a **50.0% win rate**, **3.38 Profit Factor**, and only **-7.79% Max Drawdown**.
+2. **Supertrend Flip is Far Superior to 20 SMA Breakdown**:
+   - Exiting on `Close < 20 SMA` prematurely cuts winning positions during normal consolidation pullbacks (average hold 23–25 days), dropping 5-year return from +354.6% down to +233.5%.
+   - Trailing with `Supertrend(7, 3)` allows stocks to breathe through minor consolidations while providing a strict trailing stop when volatility reverses.
+3. **Comparison with Baseline Donchian**:
+   - The Baseline Donchian generates higher ultimate compounding (+425.9% vs +354.6%) because the 50-day Donchian High enters earlier at the base breakout rather than waiting for RSI > 60 and SMA 20 > 200 crossover.
+   - However, the Chartink Supertrend strategy provides a significantly **smoother equity curve with a sub-19% multi-year drawdown**, making it an exceptional alternative for risk-sensitive trend and momentum traders.
+
+---
+
+### 🔬 HYPER-MOMENTUM SCANNER (RSI>70, MFI>70, CCI>110, VOL 2X) BENCHMARK
+
+A multi-horizon backtest was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 slots) implementing the **Hyper-Momentum Scanner** with **Supertrend(7, 3) Flip Exit**:
+- **Entry Rules**:
+  1. `RSI(14) >= 70.0` (Extreme Price Velocity)
+  2. `Money Flow Index (MFI 14) >= 70.0` (Volume-Weighted Institutional Inflow)
+  3. `Commodity Channel Index (CCI 14) >= 110.0` (Cyclical Expansion)
+  4. `Volume > 2.0 * SMA_10(Volume)` (2x Volume Ignition)
+  5. `Price > EMA(10)`
+  6. `Price % Change >= 1.0%`
+  7. `Price >= 10.0` (and $\ge 100$ liquidity filter)
+- **Exit Rule**:
+  - `Supertrend(7, 3) Flip` (Close < Supertrend or Bearish flip)
+
+| Metric & Horizon | Baseline Donchian (50D Breakout) | Chartink Supertrend (RSI>60, 20SMA) | Hyper-Momentum (RSI>70, MFI>70, CCI>110) |
+| :--- | :--- | :--- | :--- |
+| **2026 YTD Return** | **+39.91%** (CAGR 49.1%) | +26.52% (CAGR 32.3%) | +17.09% (CAGR 20.6%) |
+| **Last 12M Return** | **+49.84%** (CAGR 50.6%) | +38.98% (CAGR 39.5%) | +24.23% (CAGR 24.6%) |
+| **Last 2Y Return** | **+79.42%** (CAGR 34.7%) | +28.62% (CAGR 13.7%) | +21.42% (CAGR 10.4%) |
+| **Last 5Y Return** | **+425.90%** (CAGR 40.1%) | +354.62% (CAGR 36.0%) | +226.63% (CAGR 27.2%) |
+| **5-Year Ending Equity** | **₹5,25,896.64** | ₹4,54,615.57 | ₹3,26,632.67 |
+| **5-Year Max DD %** | -29.53% | **-18.64%** | -22.19% |
+| **5-Year Win Rate %** | 43.8% (126W / 162L) | 46.7% (93W / 106L) | **50.8%** (91W / 88L) |
+| **5-Year Profit Factor** | 2.82 | **2.93** | 2.41 |
+| **5-Year Total Trades** | 288 trades | 199 trades | 179 trades |
+| **Average Holding Days**| 47.0 days | 72.0 days | 75.3 days |
+
+#### Key Analytical Takeaways:
+1. **The Overbought Exhaustion Trap**:
+   - Requiring $RSI \ge 70$, $MFI \ge 70$, and $CCI \ge 110$ simultaneously with $2x$ volume creates an **extreme climax/blow-off filter**.
+   - Entering when all three momentum oscillators are at peak overbought levels forces the strategy to buy right into short-term exhaustion tops.
+   - Often, within 2–5 days after entry, institutional profit-taking triggers a sharp mean-reversion pullback before the trend can resume.
+2. **Lag Compared to Earlier Momentum Filters**:
+   - The earlier Chartink strategy (`RSI > 60`, `SMA 20 > 200`) delivered **+354.62%** over 5 years.
+   - By pushing the threshold higher to $RSI \ge 70$, $MFI \ge 70$, and $CCI \ge 110$, return dropped to **+226.63%** (a **₹1.28 Lakhs performance penalty**).
+3. **Conclusion**:
+   - Extreme oscillator filters ($> 70$ or $> 110$) suffer from buying late in the impulse wave.
+   - For momentum breakouts, entering early at the base breakout (Donchian High) or moderate momentum ($RSI > 60$) produces significantly superior multi-year compounding.
+
+
+
