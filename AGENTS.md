@@ -765,6 +765,59 @@ A comprehensive multi-horizon study was conducted across the Nifty 500 universe 
    - The Baseline generates **+425.90% vs +142.10%** across 5 years, **+79.42% vs -19.51%** over 2 years, and **+39.91% vs -6.59%** in 2026 YTD.
    - **Key Reason**: The Baseline enters at the exact initiation of the breakout (50-day Donchian High), protects downside immediately with an -8% stop loss and 20-day tenure cut, and locks in profits on mature winners via the two-tier profit lock (+25% gain & 20 EMA break) rather than waiting for a sluggish moving average death cross.
 
+---
+
+### 🔬 WEEKLY CCI + 200 EMA + SUPERTREND STRATEGY BENCHMARK & RESEARCH
+
+A comprehensive multi-horizon research study was conducted across the Nifty 500 universe (capital ₹1,00,000, 10% allocation per slot, max 10 concurrent slots, max 3 stocks per sector, minimum stock price ₹100) investigating the user's **Weekly CCI + 200 EMA + Supertrend Strategy**:
+- **Timeframe**: Weekly (resampled Friday close bars from daily candles).
+- **Entry Condition**:
+  1. Commodity Channel Index (CCI) crosses above -100 ($CCI[W] > -100$ and $CCI[W-1] \le -100$).
+  2. Price above 200 EMA ($Close > EMA_{200}$ / 40-week equivalent).
+- **Exit Dilemma & Research Investigation**:
+  The user asked: *"exit when supertrend indicator show sell signal (sometimes supertrend is sell in when cci shows entry) or suggesst me a exit idea ."*
+- **Execution Timing**: Signals generated at Friday close $W$, executed at Monday open $W+1$.
+
+---
+
+#### 🚨 The Quantitative Conflict: CCI > -100 vs. Supertrend Direction
+- **Empirical Discovery**: When Weekly CCI crosses above -100, **71.5% of the time, the Weekly Supertrend is ALREADY in a SELL (-1) state**!
+- **Root Cause**: CCI crossing above -100 is an *anticipatory oversold bounce* setup (the stock suffered a sharp prior drawdown that pushed CCI below -100 and flipped Supertrend to red/sell). As the price starts to tick up, CCI crosses above -100 while the price remains well beneath the upper Supertrend resistance band.
+- **Consequence for Exit Rules**:
+  1. If exiting naively when "Supertrend is SELL", the strategy immediately exits on the next candle (churning positions with 0% win rate).
+  2. If using a **Latched Supertrend Flip** (waiting for Supertrend to first flip to BUY, then exiting on SELL), weak bounces that fail to reach the upper band remain open indefinitely, exposing capital to severe drawdowns unless protected by a hard stop loss.
+
+---
+
+#### 📊 4-Horizon Comparative Performance Matrix:
+
+| Strategy Variant | 2026 YTD Return (DD) | Last 12M Return (DD) | Last 2Y Return (DD) | Last 5Y Return (DD) | 5Y Ending Equity | 5Y Profit Factor | 5Y Win Rate | 5Y Payout |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline: Daily 50D Donchian** | **+39.91%** (-11.7%) | **+49.84%** (-11.3%) | **+79.42%** (-12.8%) | **+425.90%** (-29.5%) | **₹5,25,896.64** | **2.82** | **43.8%** | **3.30x** |
+| **Var 1: Raw Supertrend Flip (No Stop)** | +13.93% (-12.2%) | -5.75% (-12.1%) | -4.42% (-25.2%) | +176.52% (-29.3%) | ₹2,76,517.60 | 3.91 | 50.0% | 6.01x |
+| **Var 2: Supertrend Flip + -8% Stop** | -5.81% (-10.8%) | -8.42% (-15.9%) | -18.64% (-19.2%) | +127.58% (-31.3%) | ₹2,27,576.15 | 2.03 | 26.8% | 9.53x |
+| **Var 3: Supertrend Confluence (Buy Filter)**| -9.14% (-10.5%) | -9.93% (-12.6%) | -23.14% (-25.2%) | +84.79% (-34.8%) | ₹1,84,785.52 | 1.91 | 20.3% | 10.00x |
+| **Var 4: CCI Mean Reversion Exit (+8% Stop)**| -5.20% (-8.7%) | -6.65% (-12.0%) | -9.67% (-15.6%) | +49.90% (-17.9%) | ₹1,49,897.78 | 1.32 | **52.3%** | 1.27x |
+| **Var 5: Weekly Close < 20 EMA (+8% Stop)** | -10.66% (-12.6%) | -13.28% (-16.8%) | -17.44% (-21.5%) | +64.62% (-27.9%) | ₹1,64,621.72 | 1.51 | 29.3% | 4.99x |
+| **Var 6: 2-Tier Profit Lock (+25% & 10 EMA)**| -11.43% (-12.6%) | -14.06% (-16.8%) | -16.48% (-19.7%) | +62.27% (-22.8%) | ₹162,271.60 | 1.51 | 30.7% | 3.93x |
+
+---
+
+#### 💡 Suggested Exit Ideas & Performance Insights:
+
+1. **Why Pure Supertrend Exit Without Stop Loss Is Fragile**:
+   - While Var 1 achieved +176.5% over 5 years (riding monster multi-year trends where Supertrend eventually flipped to BUY), it suffered net losses in 2024-2026 (-5.75% in 12M, -4.42% in 2Y). When a stock does not flip to BUY, it sits in the portfolio absorbing severe losses.
+2. **Suggested Exit Idea A — CCI Mean Reversion Exhaustion (Var 4)**:
+   - *Logic*: Since entry captures an oversold bounce ($CCI > -100$), exit when momentum becomes exhausted: Weekly CCI crosses above $+100$ and then drops below $+100$, or reaches $+150$.
+   - *Outcome*: Produces the highest win rate (**52.3% over 5 years**) and lowest maximum drawdown (**-17.90%**), with average winner $+11.8\%$ and average loser $-9.3\%$.
+3. **Suggested Exit Idea B — Supertrend Confluence (Var 3)**:
+   - *Logic*: Eliminate the conflict by only entering when CCI crosses above -100 **AND Supertrend is already in BUY (+1)**.
+   - *Outcome*: Generates massive asymmetric winners ($+98.5\%$ average gain), but win rate is low ($20.3\%$) because many breakouts already occurred before Supertrend confirmed.
+4. **Conclusion vs. Baseline**:
+   - The **Daily 50D Donchian Baseline (+425.90%, -29.5% DD, 2.82 Profit Factor)** significantly outperforms all Weekly CCI variations.
+   - The Baseline enters at the exact structural pivot (50-day Donchian High), uses dynamic risk sizing ($1.25\%$ risk per trade), cuts stagnant dead money after 20 days, and locks in profits on mature winners at $+25\%$ gain via the 20 EMA rule.
+
+
 
 
 
