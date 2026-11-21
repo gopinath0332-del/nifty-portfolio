@@ -55,14 +55,19 @@ sudo systemctl start "${SERVICE_NAME}.timer"
 echo "==> Systemd timer status:"
 sudo systemctl status "${SERVICE_NAME}.timer" --no-pager || true
 
+# 4. Set executable permissions on control scripts
+chmod +x "${APP_DIR}/logs.sh" "${APP_DIR}/status.sh" "${APP_DIR}/restart.sh" "${APP_DIR}/stop.sh" || true
+
 echo "============================================================"
 echo "✅ Setup Complete!"
 echo "• The scanner will automatically run Mon-Fri at 15:45 IST."
 echo "• To trigger an immediate test scan:"
 echo "    ${APP_DIR}/venv/bin/python ${APP_DIR}/scripts/run_daily_scan.py"
-echo "• To test Discord alert:"
-echo "    ${APP_DIR}/venv/bin/python ${APP_DIR}/scripts/test_notification.py"
+echo "• To view execution logs or follow live:"
+echo "    ${APP_DIR}/logs.sh (or ${APP_DIR}/logs.sh -f)"
+echo "• To inspect errors:"
+echo "    ${APP_DIR}/logs.sh -e"
 echo "• To view portfolio status:"
-echo "    ${APP_DIR}/venv/bin/python ${APP_DIR}/scripts/manage_portfolio.py list"
+echo "    ${APP_DIR}/status.sh"
 echo "============================================================"
 

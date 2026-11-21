@@ -34,17 +34,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.config import load_config
 from src.discord_notifier import DiscordNotifier
 from src.kite_client import get_kite_client
+from src.logger import register_error_notifier, setup_logger
 from src.market_data import MarketDataFetcher
 from src.portfolio import PortfolioManager
 from src.strategy import StrategyEngine
 from src.universe import UniverseManager
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [daily_scan]: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger("daily_scan")
+logger = setup_logger("daily_scan")
 
 
 def main() -> None:
@@ -61,15 +57,25 @@ def main() -> None:
     # 1. Load configuration
     config = load_config()
 
-    # 2. Authenticate Kite
-    kite = get_kite_client(config, validate=True)
-    if not kite:
-        msg = "Zerodha Kite authentication failed. Please verify credentials or run auto_login in nifty-strike-engine."
-        logger.error(msg)
-        if not args.no_discord and config.discord_webhook_url:
-            notifier = DiscordNotifier(config.discord_webhook_url)
-            notifier.notify_error(msg, context="Kite Connect Authentication")
-        sys.exit(1)
+    # Register Discord error dispatcher for any uncaught exception
+    if not args.no_discord and config.discord_webhook_url:
+        notifier = DiscordNotifier(config.discord_webhook_url)
+        register_error_notifier(
+            lambda msg, ctx, tb: notifier.notify_error(
+                message=msg, context=ctx, is_critical=True, traceback_str=tb
+            )
+        )
+
+    try:
+        # 2. Authenticate Kite
+        kite = get_kite_client(config, validate=True)
+        if not kite:
+            msg = "Zerodha Kite authentication failed. Please verify credentials or run auto_login in nifty-strike-engine."
+            logger.error(msg)
+            if not args.no_discord and config.discord_webhook_url:
+                notifier = DiscordNotifier(config.discord_webhook_url)
+                notifier.notify_error(msg, context="Kite Connect Authentication", is_critical=True)
+            sys.exit(1)
 
     # 3. Initialize Universe & Market Data
     universe_mgr = UniverseManager(config, kite=kite)
@@ -157,11 +163,25 @@ def main() -> None:
     print(f"  • Unrealized P&L:  ₹{summary['unrealized_pnl']:+,.2f}")
     print("=" * 60 + "\n")
 
-    # 7. Send Discord Notification
-    if not args.no_discord and config.discord_webhook_url:
-        notifier = DiscordNotifier(config.discord_webhook_url)
-        notifier.notify_scan_results(result, summary)
-        logger.info("Dispatched scan notifications to Discord.")
+        # 7. Send Discord Notification
+        if not args.no_discord and config.discord_webhook_url:
+            notifier = DiscordNotifier(config.discord_webhook_url)
+            notifier.notify_scan_results(result, summary)
+            logger.info("Dispatched scan notifications to Discord.")
+
+    except Exception as e:
+        logger.critical("Fatal exception during daily scan execution: %s", e, exc_info=True)
+        if not args.no_discord and config.discord_webhook_url:
+            import traceback
+            tb_str = traceback.format_exc()
+            notifier = DiscordNotifier(config.discord_webhook_url)
+            notifier.notify_error(
+                message=str(e),
+                context="Daily Scan Fatal Crash",
+                is_critical=True,
+                traceback_str=tb_str,
+            )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -28,5 +28,17 @@ else
     python3 "${APP_DIR}/scripts/manage_portfolio.py" list || true
 fi
 
+echo ""
+echo "--- 4. Logs & Error Status ---"
+ERROR_LOG="${APP_DIR}/logs/errors.log"
+if [ -s "$ERROR_LOG" ]; then
+    echo "⚠️  Recent errors found in $ERROR_LOG (showing last 5 lines):"
+    tail -n 5 "$ERROR_LOG"
+    echo "Run './logs.sh -e' to inspect full error stack traces or './logs.sh -f' to follow logs."
+else
+    echo "✅ No errors recorded in logs/errors.log."
+    echo "Run './logs.sh' to inspect execution logs."
+fi
+
 echo "=========================================================="
 

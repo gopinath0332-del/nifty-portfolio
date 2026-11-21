@@ -41,7 +41,9 @@ sudo systemctl list-timers "$TIMER_NAME" --no-pager || true
 
 echo ""
 echo "=========================================================="
-echo "To view live logs: sudo journalctl -u $SERVICE_NAME.service -f"
+echo "To view execution logs: ./logs.sh  (or ./logs.sh -f for live tail)"
+echo "To view error logs:     ./logs.sh -e"
+echo "To view systemd logs:   sudo journalctl -u $SERVICE_NAME.service -f"
 echo "To trigger manual scan: ./restart.sh --now"
 echo "=========================================================="
 

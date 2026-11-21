@@ -246,10 +246,25 @@ class DiscordNotifier:
             color=COLOR_SUMMARY,
         )
 
-    def notify_error(self, message: str, context: str = "") -> None:
-        """Send an error or token alert to Discord."""
+    def notify_error(
+        self,
+        message: str,
+        context: str = "",
+        is_critical: bool = False,
+        traceback_str: Optional[str] = None,
+    ) -> None:
+        """Send an error, exception traceback, or token alert to Discord."""
+        color = COLOR_ERROR if is_critical else COLOR_WARNING
+        title = "🚨 CRITICAL ERROR: Portfolio Engine Failure" if is_critical else "⚠️ ALERT: Portfolio Engine Notification"
+        desc = f"**Context:** {context}\n\n**Details:** {message}"
+
+        if traceback_str:
+            # Discord embed descriptions are capped at 4096 chars; truncate traceback cleanly
+            tb_snippet = traceback_str[-800:] if len(traceback_str) > 800 else traceback_str
+            desc += f"\n\n**Traceback:**\n```python\n{tb_snippet}\n```"
+
         self.send_embed(
-            title="⚠️ ALERT: Portfolio Engine Notification",
-            description=f"**Context:** {context}\n\n**Details:** {message}",
-            color=COLOR_WARNING,
+            title=title,
+            description=desc,
+            color=color,
         )

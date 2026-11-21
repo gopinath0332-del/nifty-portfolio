@@ -57,6 +57,7 @@ nifty-portfolio/
 │   └── settings.yaml          # Active strategy & portfolio parameters
 ├── src/
 │   ├── config.py              # Strongly-typed Dataclass configuration loader
+│   ├── logger.py              # Multi-target rotating file logger & global unhandled crash handler
 │   ├── indicators.py          # Vectorized calculations (50D, 20D, 52W, 50 EMA, 200 SMA, RVOL, ATR)
 │   ├── strategy.py            # Daily scanner engine, signal generation & candidate ranking
 │   ├── portfolio.py           # Portfolio state manager, risk-based sizing, sector tracking
@@ -64,6 +65,10 @@ nifty-portfolio/
 │   ├── universe.py            # Nifty 500 universe loader and token mapping
 │   ├── discord_notifier.py    # Discord webhook execution alerts & daily reports
 │   └── orders.py              # Kite order placement with safety dry-run checks
+├── logs.sh                    # Interactive CLI utility for log inspection and live debugging on Pi
+├── restart.sh                 # Safe service restart script with --now trigger
+├── status.sh                  # Live exchange, systemd, and log error status inspector
+├── stop.sh                    # Service shutdown utility
 ├── scripts/
 │   ├── backtest.py            # Chronological portfolio simulation engine & terminal reporter
 │   ├── generate_html_report.py# Interactive Chart.js backtest report generator
@@ -107,20 +112,50 @@ nifty-portfolio/
    ```bash
    ./status.sh  # or: python scripts/manage_portfolio.py list
    ```
-7. **Test Discord Alert Formatting & Webhook:**
+7. **Inspect & Follow Logs on Raspberry Pi:**
+   ```bash
+   ./logs.sh          # View recent scan logs and warning/error alerts
+   ./logs.sh -f       # Follow live scan output in real time (tail -f)
+   ./logs.sh -e       # View dedicated error log and full stack traces
+   ./logs.sh -j       # Inspect systemd journal logs (journalctl)
+   ./logs.sh --clear  # Safely truncate logs to free up disk space
+   ```
+8. **Test Discord Alert Formatting & Webhook:**
    ```powershell
    python scripts/test_notification.py
    ```
-8. **Run Nifty 50 vs. Nifty 500 Benchmark Comparison:**
+9. **Run Nifty 50 vs. Nifty 500 Benchmark Comparison:**
    ```powershell
    python scripts/test_nifty50_vs_nifty500.py
    # Or run standalone Nifty 50 backtest:
    python scripts/backtest.py --universe nifty50 --start 2026-01-01
    ```
-9. **Run Oliver Kell Swing Strategy Multi-Horizon Benchmark:**
+10. **Run Oliver Kell Swing Strategy Multi-Horizon Benchmark:**
    ```powershell
    python scripts/test_oliver_kell.py
    ```
+
+---
+
+### 🪵 PRODUCTION LOGGING & ERROR DEBUGGING ON RASPBERRY PI
+
+The engine incorporates a resilient multi-target logging architecture (`src/logger.py`) specifically engineered for headless 24/7 Raspberry Pi production environments:
+
+1. **Dual Rotating File Handlers (MicroSD Wear & Space Protection)**:
+   - `logs/daily_scan.log`: Complete audit trail of daily scanner runs, Kite exchange synchronization, candidate scores, and portfolio rebalances. Rotates at **10 MB** with **5 backup generations** (`daily_scan.log.1` ... `.5`), guaranteeing that log files never exceed 50 MB or exhaust the Pi's MicroSD card storage.
+   - `logs/errors.log`: Dedicated error sink capturing only `WARNING`, `ERROR`, and `CRITICAL` entries with exact timestamps, module names, function names, line numbers, and full Python tracebacks. Rotates at **5 MB** with **5 backups**.
+2. **Global Unhandled Exception Hook (`sys.excepthook`)**:
+   - Any uncaught crash, network failure, or API timeout is intercepted before the Python interpreter exits.
+   - The full stack trace is automatically flushed to `logs/errors.log` and dispatched immediately to Discord as an emergency alert (`🚨 CRITICAL ERROR`), enabling instant notification on mobile without having to SSH into the Pi.
+3. **Interactive Debug CLI (`./logs.sh`)**:
+   - View recent logs: `./logs.sh` (shows last 35 lines + highlights if any errors exist).
+   - Real-time tail: `./logs.sh -f` (live follow).
+   - Dedicated error inspection: `./logs.sh -e` (shows `logs/errors.log`).
+   - Live error tail: `./logs.sh -ef`.
+   - Systemd integration: `./logs.sh -j` (queries `journalctl -u nifty-portfolio.service -n 50 --no-pager`).
+   - Space management: `./logs.sh --clear` (safely truncates log files without breaking open file descriptors).
+4. **Enhanced `status.sh` Diagnostic**:
+   - Running `./status.sh` automatically scans `logs/errors.log` and flags any recent issues.
 
 ---
 
