@@ -15,6 +15,7 @@ Welcome to the **Nifty 500 Portfolio Engine**. This repository is an institution
    - Ensure subsequent agent sessions immediately inherit the latest system context and findings.
 3. **RUN TESTS BEFORE COMPLETING ANY TASK:**
    - Always run `python -m pytest tests/` and verify that all unit tests pass (100% green).
+   - All entrypoint scripts in `scripts/` are strictly compiled and validated via automated pytest (`test_all_scripts_syntax`) to prevent deployment indentation or syntax regressions.
    - If changes affect indicators, portfolio management, or configuration, add or update corresponding unit tests in `tests/test_strategy.py`.
 4. **PORTFOLIO CAPITAL BASELINE:**
    - The active baseline capital is **₹1,00,000 INR** (`total_capital: 100000.0` in `config/settings.yaml`).

@@ -332,6 +332,20 @@ def test_future_portfolio_capital_scaling():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def test_all_scripts_syntax():
+    """Verify all Python scripts in scripts/ compile without SyntaxError or IndentationError."""
+    import py_compile
+    from pathlib import Path
+
+    scripts_dir = Path(__file__).resolve().parent.parent / "scripts"
+    py_files = list(scripts_dir.glob("*.py"))
+    assert len(py_files) > 0, "No script files found to compile"
+
+    for script_path in py_files:
+        py_compile.compile(str(script_path), doraise=True)
+
+
+
 
 
 
