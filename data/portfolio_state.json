@@ -2,7 +2,7 @@
   "total_capital": 100000.0,
   "position_size": 10000.0,
   "max_positions": 10,
-  "cash_balance": 28086.95,
+  "cash_balance": 37901.45,
   "positions": {
     "BHEL": {
       "symbol": "BHEL",
@@ -10,16 +10,6 @@
       "entry_price": 408.85,
       "quantity": 25,
       "invested_amount": 10221.25,
-      "stop_exit_level": 0.0,
-      "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
-    },
-    "IPCALAB": {
-      "symbol": "IPCALAB",
-      "entry_date": "2026-11-11",
-      "entry_price": 1962.9,
-      "quantity": 5,
-      "invested_amount": 9814.5,
       "stop_exit_level": 0.0,
       "notes": "Auto-synced from Demat Holdings",
       "industry": ""
@@ -75,7 +65,21 @@
       "industry": ""
     }
   },
-  "trade_history": [],
+  "trade_history": [
+    {
+      "symbol": "IPCALAB",
+      "entry_date": "2026-11-11",
+      "exit_date": "2026-11-24",
+      "entry_price": 1962.9,
+      "exit_price": 1962.9,
+      "quantity": 5,
+      "invested_amount": 9814.5,
+      "exit_amount": 9814.5,
+      "pnl": 0.0,
+      "pnl_pct": 0.0,
+      "exit_reason": "Sold externally on Zerodha Exchange"
+    }
+  ],
   "last_scan_date": null,
-  "last_updated": "2026-11-19T22:04:24.871679"
+  "last_updated": "2026-11-24T20:52:58.648123"
 }

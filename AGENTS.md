@@ -76,6 +76,7 @@ nifty-portfolio/
 │   ├── test_nifty50_vs_nifty500.py # Comprehensive Nifty 50 vs Nifty 500 multi-horizon benchmark
 │   ├── test_oliver_kell.py    # Oliver Kell Swing Trading strategy multi-horizon benchmark
 │   ├── test_darvas_box.py     # Darvas Box & Screener.in multi-horizon benchmark
+│   ├── test_capital_infusion.py # Real-life capital addition & SIP compounding multi-horizon benchmark
 │   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
 │   ├── test_strategy.py       # Pytest unit tests for strategy modules
@@ -140,6 +141,10 @@ nifty-portfolio/
 11. **Run Darvas Box & Screener.in Multi-Horizon Benchmark:**
    ```powershell
    python scripts/test_darvas_box.py
+   ```
+12. **Run Capital Infusion & SIP Multi-Horizon Benchmark:**
+   ```powershell
+   python scripts/test_capital_infusion.py
    ```
 
 ---
@@ -871,6 +876,53 @@ A comprehensive multi-horizon study was conducted across the Nifty 500 universe 
    - A naive 20-day breakout generates higher whipsaws in Indian mid-caps (win rate drops to 34%–37%), whereas the 50-day breakout provides the necessary structural filter to confirm genuine Stage 2 accumulation.
 5. **Tight Base Filter ($\le 15\%$) Destroys Compounding**:
    - Forcing boxes to be $\le 15\%$ tight reduced 5-year returns from +424% down to +107%, confirming our earlier Volatility Contraction research: top momentum leaders often exhibit wider consolidation bases before exploding to new highs.
+
+---
+
+### 🔬 CAPITAL INFUSION & SIP COMPOUNDING RESEARCH (REAL-LIFE CAPITAL ADDITIONS)
+
+A rigorous multi-horizon backtest was conducted (`scripts/test_capital_infusion.py`) across the Nifty 500 universe simulating real-life capital additions over time. The engine dynamically scales position sizing ($\text{Risk Budget} = \text{Total Equity} \times 1.25\%$, $\text{Max Position} = \text{Total Equity} \times 15\%$) as cash is infused.
+
+Tested Models (Starting Capital: ₹1,00,000):
+1. **Baseline (Zero Injections)**: Pure trading profits compound without any added capital.
+2. **Monthly SIP (+₹10,000/month)**: Adding ₹10,000 on the 1st trading day of each month.
+3. **Monthly SIP (+₹20,000/month)**: Adding ₹20,000 on the 1st trading day of each month.
+4. **Quarterly Infusion (+₹50,000/quarter)**: Adding ₹50,000 at the start of each quarter.
+
+#### 📊 4-Horizon Comparative Performance & Capital Scaling Matrix:
+
+| Horizon | Model | Initial | Total Invested | Ending Equity | Net Profit | Net Return | XIRR | Max DD | Profit Factor | Win Rate | Trades | Avg Trade Size |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **2026 YTD** | Baseline (Zero Injections) | ₹1,00,000 | ₹1,00,000 | **₹1,41,745.68** | +₹41,745.68 | +41.75% | 50.44% | -8.82% | 3.47 | 43.9% | 57 | ₹10,327 |
+| **2026 YTD** | Monthly SIP (+₹10k/mo) | ₹1,00,000 | ₹2,00,000 | **₹2,63,108.89** | +₹63,108.89 | +31.55% | **53.28%** | **-8.42%** | 3.70 | 51.0% | 51 | ₹17,669 |
+| **2026 YTD** | Monthly SIP (+₹20k/mo) | ₹1,00,000 | ₹3,00,000 | **₹3,95,568.56** | +₹95,568.56 | +31.86% | **62.53%** | **-8.33%** | **4.51** | **52.8%** | 53 | ₹22,274 |
+| **2026 YTD** | Quarterly (+₹50k/qtr) | ₹1,00,000 | ₹2,50,000 | **₹3,26,009.37** | +₹76,009.37 | +30.40% | 58.62% | -8.20% | 4.49 | 47.2% | 53 | ₹17,989 |
+| **Last 12M** | Baseline (Zero Injections) | ₹1,00,000 | ₹1,00,000 | **₹1,50,324.18** | +₹50,324.18 | +50.32% | 50.53% | -10.06% | 3.46 | 48.5% | 68 | ₹10,803 |
+| **Last 12M** | Monthly SIP (+₹10k/mo) | ₹1,00,000 | ₹2,20,000 | **₹2,96,941.37** | +₹76,941.37 | +34.97% | 50.25% | **-8.74%** | 3.51 | 52.4% | 63 | ₹18,969 |
+| **Last 12M** | Monthly SIP (+₹20k/mo) | ₹1,00,000 | ₹3,40,000 | **₹4,65,586.77** | +₹1,25,586.77| +36.94% | **61.18%** | **-8.91%** | **4.08** | 50.0% | 64 | ₹25,108 |
+| **Last 12M** | Quarterly (+₹50k/qtr) | ₹1,00,000 | ₹3,00,000 | **₹3,97,066.41** | +₹97,066.41 | +32.36% | 51.40% | -8.85% | 3.39 | 50.0% | 66 | ₹22,417 |
+| **Last 2Y** | Baseline (Zero Injections) | ₹1,00,000 | ₹1,00,000 | **₹1,81,527.39** | +₹81,527.39 | +81.53% | 34.87% | -11.18% | 3.66 | 51.4% | 109 | ₹12,424 |
+| **Last 2Y** | Monthly SIP (+₹10k/mo) | ₹1,00,000 | ₹3,40,000 | **₹5,62,709.56** | +₹2,22,709.56| +65.50% | **44.93%** | **-8.88%** | 3.37 | 50.9% | 112 | ₹30,556 |
+| **Last 2Y** | Monthly SIP (+₹20k/mo) | ₹1,00,000 | ₹5,80,000 | **₹9,14,983.29** | +₹3,34,983.29| +57.76% | **44.82%** | **-9.01%** | 3.39 | 51.4% | 109 | ₹47,264 |
+| **Last 2Y** | Quarterly (+₹50k/qtr) | ₹1,00,000 | ₹5,00,000 | **₹7,67,736.31** | +₹2,67,736.31| +53.55% | 40.73% | -10.17% | 3.05 | 50.5% | 109 | ₹39,959 |
+| **Last 5Y** | Baseline (Zero Injections) | ₹1,00,000 | ₹1,00,000 | **₹6,61,631.63** | +₹5,61,631.63| +561.63% | 45.96% | -29.53% | 3.80 | 49.3% | 288 | ₹26,024 |
+| **Last 5Y** | Monthly SIP (+₹10k/mo) | ₹1,00,000 | ₹7,00,000 | **₹23,38,351.36**| +₹16,38,351.36| +234.05% | **44.40%** | **-13.18%** | 3.48 | 45.9% | 292 | ₹80,936 |
+| **Last 5Y** | Monthly SIP (+₹20k/mo) | ₹1,00,000 | ₹13,00,000 | **₹39,90,426.34**| +₹26,90,426.34| +206.96% | **43.79%** | **-12.85%** | 3.46 | 46.4% | 295 | ₹1,35,295 |
+| **Last 5Y** | Quarterly (+₹50k/qtr) | ₹1,00,000 | ₹1,10,000 | **₹34,54,566.14**| +₹23,54,566.14| +214.05% | 44.13% | -24.72% | 3.41 | 44.2% | 301 | ₹1,13,250 |
+
+#### 💡 Key Quantitative Findings & Practical Insights:
+
+1. **Drawdown Dampening (The Biggest Psychological Advantage)**:
+   - In the Baseline 5-year run, the maximum portfolio drawdown was **-29.53%**.
+   - With a systematic **Monthly SIP (+₹10k/mo)**, the maximum drawdown dropped by more than half to **-13.18%** (and **-12.85%** for +₹20k/mo).
+   - *Why*: Adding cash periodically provides regular dry powder during market consolidations, cushioning portfolio equity drops and allowing the system to enter the earliest leaders of the subsequent market recovery.
+2. **Massive Absolute Wealth Generation at Consistent ~44% XIRR**:
+   - Starting with ₹1 Lakh and adding ₹10,000/month (total principal ₹7.0 Lakhs) compounded to **₹23.38 Lakhs (+₹16.38 Lakhs net profit)** over 5 years.
+   - Adding ₹20,000/month (total principal ₹13.0 Lakhs) compounded to **₹39.90 Lakhs (+₹26.90 Lakhs net profit)**.
+   - The money-weighted annualized return (**XIRR: ~44%–45%**) remains remarkably rock-solid regardless of the amount added.
+3. **Seamless Dynamic Position Sizing Without Overtrading**:
+   - Total trade count remained nearly constant (~288 to 295 trades over 5 years). The system does **not** churn or overtrade when extra capital is injected; it simply sizes up each trade proportionately.
+   - Average trade size naturally grew from **₹10,000** at launch to **₹30,000–₹47,000** by Year 2, and reached **₹80,000–₹1,35,000** by Year 5.
 
 
 
