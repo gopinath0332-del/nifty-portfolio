@@ -92,6 +92,10 @@ def compute_darvas_indicators(df: pd.DataFrame) -> pd.DataFrame:
         100.0,
     )
 
+    # 6. Candle Close Strength: (Close - Low) / (High - Low)
+    hl_spread = out["high"] - out["low"]
+    out["candle_strength"] = np.where(hl_spread > 0, (out["close"] - out["low"]) / hl_spread, 0.5)
+
     # 5. Classic Nicolas Darvas 3-Day State Machine Box
     # Algorithm:
     # State: NONE -> TOP_CANDIDATE (waiting 3 days of non-violation) -> TOP_CONFIRMED -> BOT_CANDIDATE -> BOX_LOCKED
@@ -466,6 +470,33 @@ class DarvasStrategyBacktester:
                         elif unrealized_pnl_pct >= 25.0 and ema_20 > 0 and close < ema_20:
                             pending_exits[sym] = f"Profit Lock (+{unrealized_pnl_pct:.1f}% & Close < 20 EMA)"
 
+                    elif self.strategy_variant in ("golden_hybrid", "golden_hybrid_adaptive_2x"):
+                        # Golden Hybrid Exit:
+                        # 1. Hard Stop -8%
+                        # 2. Tenure Loss Cut (20d held, P&L < 0)
+                        # 3. Profit Lock: Gain >= +25% & Close < 20 EMA
+                        # 4. Stage 2 Breakdown: Close < 50 EMA
+                        # 5. Darvas Step-Ladder Trailing Stop: ratchets up whenever a new higher box is locked
+                        cur_box_bot = float(row.get("darvas_box_bot_prev", 0))
+                        if not np.isnan(cur_box_bot) and cur_box_bot > pos.get("active_box_bot", 0):
+                            pos["active_box_bot"] = cur_box_bot
+
+                        stop_floor = pos.get("active_box_bot", entry_px * (1.0 - self.max_loss_pct / 100.0))
+                        low_20_prev = float(row.get("low_20_prev", 0))
+
+                        if close <= entry_px * (1.0 - self.max_loss_pct / 100.0):
+                            pending_exits[sym] = f"Hard Stop (-{self.max_loss_pct:.0f}%)"
+                        elif trading_days_held >= 20 and unrealized_pnl_pct < 0:
+                            pending_exits[sym] = f"Tenure Loss Cut ({trading_days_held}d, {unrealized_pnl_pct:.1f}%)"
+                        elif unrealized_pnl_pct >= 25.0 and ema_20 > 0 and close < ema_20:
+                            pending_exits[sym] = f"Profit Lock (+{unrealized_pnl_pct:.1f}% & Close < 20 EMA)"
+                        elif ema_50 > 0 and close < ema_50:
+                            pending_exits[sym] = "Stage 2 Breakdown (Close < 50 EMA)"
+                        elif close < stop_floor:
+                            pending_exits[sym] = "Darvas Step-Ladder Box Breakdown"
+                        elif low_20_prev > 0 and close < low_20_prev:
+                            pending_exits[sym] = "20-Day Low Breakdown"
+
                 # ---------------- Entry Evaluation ----------------
                 elif is_market_bullish:
                     if close < 100.0:
@@ -576,6 +607,39 @@ class DarvasStrategyBacktester:
                                     "stop_loss": darvas_bot,
                                     "box_bot": darvas_bot,
                                 })
+
+                    elif self.strategy_variant in ("golden_hybrid", "golden_hybrid_adaptive_2x"):
+                        # Golden Hybrid: 50D Breakout + 52W Proximity + RVOL >= 1.2 + Candle Close Strength >= 0.70
+                        high_50_prev = float(row.get("high_50_prev", 0))
+                        low_20_prev = float(row.get("low_20_prev", 0))
+                        candle_str = float(row.get("candle_strength", 0.5))
+                        is_breakout = close > high_50_prev and high_50_prev > 0
+                        passes_52w = dist_52w >= -10.0
+                        is_liquid = vol >= 100000 and vol_sma >= 50000
+                        has_rvol = rvol >= 1.2
+                        strong_close = candle_str >= 0.70  # closed in top 30% of day's range
+
+                        passes_adaptive = True
+                        if self.strategy_variant == "golden_hybrid_adaptive_2x":
+                            # Require at least 50% gain from 52w low (Price >= 1.5 * Low_52W)
+                            gain_52w_low = float(row.get("gain_from_52w_low_pct", 0))
+                            passes_adaptive = gain_52w_low >= 50.0
+
+                        if is_breakout and passes_52w and is_liquid and has_rvol and is_stage_2 and strong_close and passes_adaptive:
+                            breakout_pct = ((close - high_50_prev) / high_50_prev) * 100.0
+                            score = breakout_pct * rvol
+                            darvas_bot = float(row.get("darvas_box_bot_prev", np.nan))
+                            initial_stop = low_20_prev
+                            if not np.isnan(darvas_bot) and darvas_bot > 0:
+                                initial_stop = max(low_20_prev, darvas_bot)
+
+                            todays_candidates.append({
+                                "symbol": sym,
+                                "close": close,
+                                "score": score,
+                                "stop_loss": initial_stop,
+                                "box_bot": initial_stop,
+                            })
 
             todays_candidates.sort(key=lambda x: x["score"], reverse=True)
             pending_entries = todays_candidates
@@ -706,10 +770,10 @@ def run_all_benchmarks():
 
     variants = [
         ("Baseline (50D Donchian, 2-Tier Exit)", "baseline"),
-        ("Baseline + 2x 52W Low Filter", "baseline_plus_2x_52w_low"),
-        ("Screener 20D Box (Vol>100k, RVOL>=1.5, 2x Low)", "screener_box_20d"),
-        ("Screener 20D Box Tight (Tightness<=15%)", "screener_box_20d_tight"),
         ("Classic Darvas State Machine (3-Day Pivot)", "classic_darvas_box"),
+        ("Golden Hybrid (50D + Close>=70% + Darvas Trailing)", "golden_hybrid"),
+        ("Golden Hybrid + Adaptive 1.5x Low", "golden_hybrid_adaptive_2x"),
+        ("Screener 20D Box (Vol>100k, RVOL>=1.5, 2x Low)", "screener_box_20d"),
     ]
 
     for h_name, start_d, end_d in HORIZONS:

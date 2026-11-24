@@ -845,9 +845,11 @@ A comprehensive multi-horizon study was conducted across the Nifty 500 universe 
 
 | Strategy Variant | 2026 YTD Return (DD) | Last 12M Return (DD) | Last 2Y Return (DD) | Last 5Y Return (DD) | 5Y Ending Equity | 5Y Profit Factor | 5Y Win Rate | 5Y Sharpe |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Baseline (50D Donchian, 2-Tier Exit)** | +34.67% (-12.4%) | **+50.78%** (-12.6%) | +74.88% (-12.8%) | **+424.27%** (-29.7%) | **₹5,24,265.49** | **2.88** | **46.8%** | **1.33** |
+| **Baseline (50D Donchian, 2-Tier Exit)** | +34.67% (-12.4%) | +50.78% (-12.6%) | +74.88% (-12.8%) | **+424.27%** (-29.7%) | **₹5,24,265.49** | **2.88** | **46.8%** | **1.33** |
 | **Baseline + 2x 52W Low Filter** | +27.73% (-10.7%) | +35.36% (-15.6%) | **+91.80%** (-13.8%) | +326.09% (-22.3%) | ₹4,26,085.80 | 2.61 | 39.6% | 1.18 |
 | **Classic Darvas State Machine (3-Day Pivot)** | **+36.21%** (**-6.3%**) | +34.49% (-14.0%) | +69.80% (-13.8%) | +405.13% (**-17.2%**) | ₹5,05,134.67 | 2.29 | 44.1% | **1.33** |
+| **Golden Hybrid + Adaptive 1.5x Low** | +32.72% (-9.2%) | **+57.21%** (**-9.7%**) | +60.97% (-14.4%) | +274.89% (-28.0%) | ₹3,74,892.35 | 2.17 | 38.0% | 1.08 |
+| **Golden Hybrid (50D + Close $\ge 70\%$ + Darvas)**| +26.51% (-11.7%) | +29.79% (-12.9%) | +38.95% (-16.3%) | +192.90% (-30.2%) | ₹2,92,900.55 | 1.88 | 39.0% | 0.85 |
 | **Screener 20D Box (RVOL $\ge 1.5$, 2x Low)** | +35.25% (-11.0%) | +23.20% (-15.7%) | +56.80% (-14.9%) | +177.56% (-26.6%) | ₹2,77,562.47 | 1.85 | 34.4% | 0.76 |
 | **Screener 20D Box Tight ($\le 15\%$)** | +12.41% (-7.1%) | +9.68% (-12.9%) | +13.31% (-12.8%) | +107.04% (-18.9%) | ₹2,07,044.23 | 2.06 | 42.0% | 0.61 |
 
@@ -859,12 +861,15 @@ A comprehensive multi-horizon study was conducted across the Nifty 500 universe 
    - The true **Nicolas Darvas 3-day pivot box** with a **step-ladder trailing stop** is a remarkably robust risk-managed model. Over 5 years, it compounded ₹1 Lakh to **₹5.05 Lakhs (+405.13%, 38.3% CAGR)** while containing maximum portfolio drawdown to just **-17.19%** (compared to -29.67% in the Baseline).
    - In 2026 YTD, the Classic Darvas model produced **+36.21% return with only -6.31% max drawdown**, delivering an exceptional Sharpe ratio (1.63).
    - *Why it works*: When a stock ascends into higher boxes, the step-ladder trailing stop progressively locks in profit at the floor of each new box without waiting for a broad moving average breakdown.
-2. **Impact of the Screener.in "2x Above 52-Week Low" Filter (`Close >= 2.0 * Low_52W`)**:
+2. **Golden Hybrid + Adaptive 1.5x Low Outperforms in 12M Horizon (+57.21% vs +50.78%)**:
+   - In the Last 12 Months, combining the 50D breakout with candle closing strength ($\ge 70\%$ of bar range) and requiring stocks to be $\ge 50\%$ above their 52W low achieved the highest 12M return (**+57.21%, CAGR 57.5%**) with single-digit drawdown (**-9.74%**) and a peak Sharpe of **1.95**.
+   - However, over 5 years, Classic Darvas remains superior (+405.1% vs +274.9%) because Darvas's 3-day pivot rules inherently select consolidations with balanced risk/reward floors.
+3. **Impact of the Screener.in "2x Above 52-Week Low" Filter (`Close >= 2.0 * Low_52W`)**:
    - In the **Last 2 Years**, adding the 2x 52W Low rule dramatically boosted returns from **+74.88% to +91.80%** and Profit Factor from 2.95 to 3.47, because it strictly concentrated capital in the fiercest momentum market leaders (stocks that had already doubled).
    - Over **5 Years**, however, requiring a stock to have already doubled from its 52W low resulted in a mild opportunity drag (+326.1% vs +424.3%), because it prevents entering monster turnarounds early in new bull cycles when stocks have only risen 40%–60% from cyclical bottoms.
-3. **20-Day Box vs. 50-Day Donchian Breakout**:
+4. **20-Day Box vs. 50-Day Donchian Breakout**:
    - A naive 20-day breakout generates higher whipsaws in Indian mid-caps (win rate drops to 34%–37%), whereas the 50-day breakout provides the necessary structural filter to confirm genuine Stage 2 accumulation.
-4. **Tight Base Filter ($\le 15\%$) Destroys Compounding**:
+5. **Tight Base Filter ($\le 15\%$) Destroys Compounding**:
    - Forcing boxes to be $\le 15\%$ tight reduced 5-year returns from +424% down to +107%, confirming our earlier Volatility Contraction research: top momentum leaders often exhibit wider consolidation bases before exploding to new highs.
 
 
