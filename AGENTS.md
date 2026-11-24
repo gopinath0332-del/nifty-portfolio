@@ -117,7 +117,11 @@ nifty-portfolio/
    ```bash
    ./status.sh  # or: python scripts/manage_portfolio.py list
    ```
-7. **Inspect & Follow Logs on Raspberry Pi:**
+7. **Add Capital / Monthly SIP to Strategy Budget:**
+   ```bash
+   python scripts/manage_portfolio.py add-funds 10000
+   ```
+8. **Inspect & Follow Logs on Raspberry Pi:**
    ```bash
    ./logs.sh          # View recent scan logs and warning/error alerts
    ./logs.sh -f       # Follow live scan output in real time (tail -f)

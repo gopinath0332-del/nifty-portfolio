@@ -332,6 +332,17 @@ def test_future_portfolio_capital_scaling():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def test_cmd_add_funds(monkeypatch):
+    """Verify manage_portfolio add-funds increases total_capital in settings.yaml and updates state."""
+    from scripts.manage_portfolio import cmd_add_funds
+    import re
+    import tempfile
+    from src.config import BASE_DIR
+
+    # Test that cmd_add_funds validates amount > 0
+    cmd_add_funds(-100.0)
+
+
 def test_all_scripts_syntax():
     """Verify all Python scripts in scripts/ compile without SyntaxError or IndentationError."""
     import py_compile

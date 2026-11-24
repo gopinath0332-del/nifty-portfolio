@@ -200,6 +200,48 @@ def cmd_history(portfolio: PortfolioManager) -> None:
     print(f"\nCumulative Realized P&L: ₹{total_pnl:+,.2f}\n")
 
 
+def cmd_add_funds(amount: float) -> None:
+    """Add extra capital to strategy portfolio budget (e.g. monthly SIP)."""
+    if amount <= 0:
+        print("❌ Error: Infusion amount must be greater than 0.")
+        return
+    import re
+    from src.config import BASE_DIR
+    settings_path = BASE_DIR / "config" / "settings.yaml"
+    if not settings_path.exists():
+        print(f"❌ Error: {settings_path} not found.")
+        return
+
+    with open(settings_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    m = re.search(r"total_capital:\s*([\d\.]+)", content)
+    if not m:
+        print("❌ Error: Could not find total_capital in config/settings.yaml")
+        return
+
+    old_cap = float(m.group(1))
+    new_cap = old_cap + amount
+    new_content = re.sub(r"total_capital:\s*[\d\.]+", f"total_capital: {new_cap:.1f}", content, count=1)
+    with open(settings_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    cfg = load_config()
+    pm = PortfolioManager(cfg)
+    pm.save_state()
+
+    print("\n" + "=" * 65)
+    print("💰 CAPITAL INFUSION / ADD FUNDS SUCCESS")
+    print("=" * 65)
+    print(f"Added Amount:           +₹{amount:,.2f}")
+    print(f"Previous Strategy Cap:   ₹{old_cap:,.2f}")
+    print(f"New Strategy Capital:    ₹{new_cap:,.2f}")
+    print(f"New Available Cash:      ₹{pm.cash_balance:,.2f}")
+    print(f"New Total Equity:        ₹{pm.get_total_equity():,.2f}")
+    print("=" * 65)
+    print("✅ Future breakout orders will now automatically size with the higher equity baseline.\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Nifty Portfolio CLI Manager")
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
@@ -226,6 +268,10 @@ def main() -> None:
     # history
     subparsers.add_parser("history", help="Show closed trades history")
 
+    # add-funds
+    add_parser = subparsers.add_parser("add-funds", help="Add capital to strategy budget (e.g. monthly SIP)")
+    add_parser.add_argument("amount", type=float, help="Amount in INR to add (e.g. 10000)")
+
     args = parser.parse_args()
 
     config = load_config()
@@ -237,6 +283,8 @@ def main() -> None:
 
     if args.command == "list" or not args.command:
         cmd_list(portfolio, kite)
+    elif args.command == "add-funds":
+        cmd_add_funds(args.amount)
     elif args.command == "buy":
         cmd_buy(portfolio, args.symbol, args.price, args.qty, args.stop)
     elif args.command == "sell":
