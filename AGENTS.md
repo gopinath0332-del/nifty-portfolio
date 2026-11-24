@@ -74,6 +74,8 @@ nifty-portfolio/
 │   ├── backtest.py            # Chronological portfolio simulation engine & terminal reporter
 │   ├── generate_html_report.py# Interactive Chart.js backtest report generator
 │   ├── test_nifty50_vs_nifty500.py # Comprehensive Nifty 50 vs Nifty 500 multi-horizon benchmark
+│   ├── test_oliver_kell.py    # Oliver Kell Swing Trading strategy multi-horizon benchmark
+│   ├── test_darvas_box.py     # Darvas Box & Screener.in multi-horizon benchmark
 │   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
 │   ├── test_strategy.py       # Pytest unit tests for strategy modules
@@ -134,6 +136,10 @@ nifty-portfolio/
 10. **Run Oliver Kell Swing Strategy Multi-Horizon Benchmark:**
    ```powershell
    python scripts/test_oliver_kell.py
+   ```
+11. **Run Darvas Box & Screener.in Multi-Horizon Benchmark:**
+   ```powershell
+   python scripts/test_darvas_box.py
    ```
 
 ---
@@ -817,6 +823,50 @@ A comprehensive multi-horizon research study was conducted across the Nifty 500 
 4. **Conclusion vs. Baseline**:
    - The **Daily 50D Donchian Baseline (+425.90%, -29.5% DD, 2.82 Profit Factor)** significantly outperforms all Weekly CCI variations.
    - The Baseline enters at the exact structural pivot (50-day Donchian High), uses dynamic risk sizing ($1.25\%$ risk per trade), cuts stagnant dead money after 20 days, and locks in profits on mature winners at $+25\%$ gain via the 20 EMA rule.
+
+---
+
+### 🔬 DARVAS BOX & SCREENER.IN MOMENTUM STRATEGY RESEARCH & BENCHMARK
+
+A comprehensive multi-horizon study was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 concurrent slots, max 3 stocks per sector) investigating the **Darvas Box Momentum Strategy** and the modern **Screener.in Momentum Query**:
+- **Screener.in Conditions Tested**:
+  1. *Within 10% of 52-Week High*: `(High_52W - Close) / High_52W * 100 < 10`
+  2. *At Least 2x from 52-Week Low*: `Close >= 2.0 * Low_52W` (100% gain from 52W low)
+  3. *Liquidity Filter*: Daily Volume $\ge 1,00,000$ shares & 20D Volume SMA $\ge 1,00,000$
+  4. *Volume Expansion*: Breakout bar $\text{RVOL} \ge 1.5$
+  5. *Box Formations*:
+     - **Classic Nicolas Darvas State Machine (3-Day Pivot)**: Requires high to hold for 3 consecutive days without violation to lock Box Top, followed by pullback low holding 3 days to lock Box Bottom. Dynamic step-ladder trailing stop tracks each newly established higher box bottom.
+     - **20-Day Donchian Box**: 20-day high breakout + 20-day low box bottom stop.
+     - **Tight 20-Day Box**: Same + Box Tightness $\le 15\%$ (volatility contraction).
+
+---
+
+#### 📊 4-Horizon Comparative Performance Matrix:
+
+| Strategy Variant | 2026 YTD Return (DD) | Last 12M Return (DD) | Last 2Y Return (DD) | Last 5Y Return (DD) | 5Y Ending Equity | 5Y Profit Factor | 5Y Win Rate | 5Y Sharpe |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline (50D Donchian, 2-Tier Exit)** | +34.67% (-12.4%) | **+50.78%** (-12.6%) | +74.88% (-12.8%) | **+424.27%** (-29.7%) | **₹5,24,265.49** | **2.88** | **46.8%** | **1.33** |
+| **Baseline + 2x 52W Low Filter** | +27.73% (-10.7%) | +35.36% (-15.6%) | **+91.80%** (-13.8%) | +326.09% (-22.3%) | ₹4,26,085.80 | 2.61 | 39.6% | 1.18 |
+| **Classic Darvas State Machine (3-Day Pivot)** | **+36.21%** (**-6.3%**) | +34.49% (-14.0%) | +69.80% (-13.8%) | +405.13% (**-17.2%**) | ₹5,05,134.67 | 2.29 | 44.1% | **1.33** |
+| **Screener 20D Box (RVOL $\ge 1.5$, 2x Low)** | +35.25% (-11.0%) | +23.20% (-15.7%) | +56.80% (-14.9%) | +177.56% (-26.6%) | ₹2,77,562.47 | 1.85 | 34.4% | 0.76 |
+| **Screener 20D Box Tight ($\le 15\%$)** | +12.41% (-7.1%) | +9.68% (-12.9%) | +13.31% (-12.8%) | +107.04% (-18.9%) | ₹2,07,044.23 | 2.06 | 42.0% | 0.61 |
+
+---
+
+#### 💡 Key Quantitative Findings & Practical Insights:
+
+1. **Classic Darvas 3-Day State Machine Slashes Drawdown by Nearly Half (-17.2% vs -29.7%)**:
+   - The true **Nicolas Darvas 3-day pivot box** with a **step-ladder trailing stop** is a remarkably robust risk-managed model. Over 5 years, it compounded ₹1 Lakh to **₹5.05 Lakhs (+405.13%, 38.3% CAGR)** while containing maximum portfolio drawdown to just **-17.19%** (compared to -29.67% in the Baseline).
+   - In 2026 YTD, the Classic Darvas model produced **+36.21% return with only -6.31% max drawdown**, delivering an exceptional Sharpe ratio (1.63).
+   - *Why it works*: When a stock ascends into higher boxes, the step-ladder trailing stop progressively locks in profit at the floor of each new box without waiting for a broad moving average breakdown.
+2. **Impact of the Screener.in "2x Above 52-Week Low" Filter (`Close >= 2.0 * Low_52W`)**:
+   - In the **Last 2 Years**, adding the 2x 52W Low rule dramatically boosted returns from **+74.88% to +91.80%** and Profit Factor from 2.95 to 3.47, because it strictly concentrated capital in the fiercest momentum market leaders (stocks that had already doubled).
+   - Over **5 Years**, however, requiring a stock to have already doubled from its 52W low resulted in a mild opportunity drag (+326.1% vs +424.3%), because it prevents entering monster turnarounds early in new bull cycles when stocks have only risen 40%–60% from cyclical bottoms.
+3. **20-Day Box vs. 50-Day Donchian Breakout**:
+   - A naive 20-day breakout generates higher whipsaws in Indian mid-caps (win rate drops to 34%–37%), whereas the 50-day breakout provides the necessary structural filter to confirm genuine Stage 2 accumulation.
+4. **Tight Base Filter ($\le 15\%$) Destroys Compounding**:
+   - Forcing boxes to be $\le 15\%$ tight reduced 5-year returns from +424% down to +107%, confirming our earlier Volatility Contraction research: top momentum leaders often exhibit wider consolidation bases before exploding to new highs.
+
 
 
 
