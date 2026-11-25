@@ -9,8 +9,8 @@ User=pi
 WorkingDirectory=/home/pi/nifty-portfolio
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/pi/nifty-portfolio/venv/bin/python /home/pi/nifty-portfolio/scripts/run_daily_scan.py
-StandardOutput=append:/home/pi/nifty-portfolio/logs/daily_scan.log
-StandardError=append:/home/pi/nifty-portfolio/logs/daily_scan_error.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

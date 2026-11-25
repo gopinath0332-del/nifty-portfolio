@@ -169,9 +169,11 @@ nifty-portfolio/
 
 The engine incorporates a resilient multi-target logging architecture (`src/logger.py`) specifically engineered for headless 24/7 Raspberry Pi production environments:
 
-1. **Dual Rotating File Handlers (MicroSD Wear & Space Protection)**:
+1. **Dual Rotating File Handlers & Systemd Isolation (MicroSD Wear & Permission Safety)**:
    - `logs/daily_scan.log`: Complete audit trail of daily scanner runs, Kite exchange synchronization, candidate scores, and portfolio rebalances. Rotates at **10 MB** with **5 backup generations** (`daily_scan.log.1` ... `.5`), guaranteeing that log files never exceed 50 MB or exhaust the Pi's MicroSD card storage.
    - `logs/errors.log`: Dedicated error sink capturing only `WARNING`, `ERROR`, and `CRITICAL` entries with exact timestamps, module names, function names, line numbers, and full Python tracebacks. Rotates at **5 MB** with **5 backups**.
+   - `deploy/nifty-portfolio.service` uses `StandardOutput=journal` and `StandardError=journal` so `systemd` never creates root-owned log files in `logs/` or double-writes alongside Python's `RotatingFileHandler`.
+   - `setup_logger()` gracefully falls back to console/journal logging if a log file raises `OSError` / `PermissionError` so the daily scan is never aborted at startup.
 2. **Global Unhandled Exception Hook (`sys.excepthook`)**:
    - Any uncaught crash, network failure, or API timeout is intercepted before the Python interpreter exits.
    - The full stack trace is automatically flushed to `logs/errors.log` and dispatched immediately to Discord as an emergency alert (`🚨 CRITICAL ERROR`), enabling instant notification on mobile without having to SSH into the Pi.

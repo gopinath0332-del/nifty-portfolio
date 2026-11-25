@@ -84,7 +84,10 @@ def setup_logger(
     global _LOGGING_INITIALIZED
 
     target_dir = Path(log_dir)
-    target_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
 
     # Resolve log level
     if isinstance(log_level, str):
@@ -122,27 +125,33 @@ def setup_logger(
 
     # 2. General Rotating File Handler (logs/daily_scan.log)
     scan_log_file = target_dir / "daily_scan.log"
-    scan_file_handler = RotatingFileHandler(
-        scan_log_file,
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding="utf-8",
-    )
-    scan_file_handler.setLevel(numeric_level)
-    scan_file_handler.setFormatter(file_formatter)
-    root_logger.addHandler(scan_file_handler)
+    try:
+        scan_file_handler = RotatingFileHandler(
+            scan_log_file,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding="utf-8",
+        )
+        scan_file_handler.setLevel(numeric_level)
+        scan_file_handler.setFormatter(file_formatter)
+        root_logger.addHandler(scan_file_handler)
+    except OSError as exc:
+        root_logger.warning("Could not open %s (%s); continuing with console logging only.", scan_log_file, exc)
 
     # 3. Dedicated Error Rotating File Handler (logs/errors.log)
     error_log_file = target_dir / "errors.log"
-    error_file_handler = RotatingFileHandler(
-        error_log_file,
-        maxBytes=5 * 1024 * 1024,  # 5 MB
-        backupCount=backup_count,
-        encoding="utf-8",
-    )
-    error_file_handler.setLevel(logging.WARNING)  # Captures WARNING, ERROR, CRITICAL
-    error_file_handler.setFormatter(file_formatter)
-    root_logger.addHandler(error_file_handler)
+    try:
+        error_file_handler = RotatingFileHandler(
+            error_log_file,
+            maxBytes=5 * 1024 * 1024,  # 5 MB
+            backupCount=backup_count,
+            encoding="utf-8",
+        )
+        error_file_handler.setLevel(logging.WARNING)  # Captures WARNING, ERROR, CRITICAL
+        error_file_handler.setFormatter(file_formatter)
+        root_logger.addHandler(error_file_handler)
+    except OSError as exc:
+        root_logger.warning("Could not open %s (%s); error file logging disabled for this run.", error_log_file, exc)
 
     # 4. Install global exception hook
     if install_excepthook:

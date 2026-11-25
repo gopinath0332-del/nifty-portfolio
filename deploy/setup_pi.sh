@@ -14,6 +14,7 @@ echo "==> User: ${USER_NAME} | Directory: ${APP_DIR}"
 
 mkdir -p "${APP_DIR}/logs"
 mkdir -p "${APP_DIR}/data/cache"
+sudo chown -R "${USER_NAME}:${USER_NAME}" "${APP_DIR}/logs" || true
 
 # Ensure timezone is Asia/Kolkata
 echo "==> Verifying system timezone (Asia/Kolkata)..."

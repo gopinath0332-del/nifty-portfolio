@@ -98,3 +98,23 @@ def test_unhandled_exception_handler(tmp_path: Path):
     assert "ValueError: Simulated unexpected crash" in msg
     assert "Global Unhandled Exception" in ctx
     assert "test_unhandled_exception_handler" in tb
+
+
+def test_setup_logger_survives_permission_error(tmp_path: Path, monkeypatch):
+    """Verify setup_logger falls back gracefully to console logging if file handlers raise PermissionError."""
+    import src.logger as logger_mod
+
+    def raise_perm_error(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(logger_mod, "RotatingFileHandler", raise_perm_error)
+
+    logger = setup_logger(
+        name="perm_fallback_test",
+        log_dir=tmp_path / "locked_logs",
+        log_level="INFO",
+        enable_console=True,
+        install_excepthook=False,
+    )
+    logger.info("Scan continues despite locked log file")
+    assert len(logging.getLogger().handlers) >= 1
