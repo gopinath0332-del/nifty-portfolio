@@ -29,6 +29,7 @@ class Position:
     stop_exit_level: float = 0.0
     notes: str = ""
     industry: str = ""
+    partial_taken: bool = False
 
 
 @dataclass
@@ -47,7 +48,7 @@ class TradeRecord:
 
 
 class PortfolioManager:
-    """Manages portfolio allocation based on fixed strategy capital (e.g. ₹1,00,000 baseline)."""
+    """Manages portfolio allocation based on fixed strategy capital (e.g. ₹2,00,000 baseline)."""
 
     def __init__(self, config: AppConfig):
         self.config = config
@@ -61,8 +62,26 @@ class PortfolioManager:
         self.positions: Dict[str, Position] = {}
         self.trade_history: List[TradeRecord] = []
         self.last_scan_date: Optional[str] = None
+        self._symbol_industry_map: Dict[str, str] = self._load_symbol_industries()
 
         self.load_state()
+
+    def _load_symbol_industries(self) -> Dict[str, str]:
+        """Load symbol -> industry mapping from universe CSV for sector tracking."""
+        mapping: Dict[str, str] = {}
+        try:
+            import csv
+            universe_path = BASE_DIR / self.config.files.universe_csv
+            if universe_path.exists():
+                with open(universe_path, "r", encoding="utf-8") as f:
+                    for row in csv.DictReader(f):
+                        sym = str(row.get("Symbol", "")).strip().upper()
+                        ind = str(row.get("Industry", "")).strip()
+                        if sym and ind:
+                            mapping[sym] = ind
+        except Exception as e:
+            logger.debug("Could not load sector mapping from universe CSV: %s", e)
+        return mapping
 
     def _reconcile_cash(self) -> None:
         """
@@ -92,6 +111,7 @@ class PortfolioManager:
 
             self.positions = {}
             for sym, pos_data in data.get("positions", {}).items():
+                ind = pos_data.get("industry", "") or self._symbol_industry_map.get(sym, "")
                 self.positions[sym] = Position(
                     symbol=pos_data["symbol"],
                     entry_date=pos_data["entry_date"],
@@ -100,7 +120,8 @@ class PortfolioManager:
                     invested_amount=float(pos_data["invested_amount"]),
                     stop_exit_level=float(pos_data.get("stop_exit_level", 0.0)),
                     notes=pos_data.get("notes", ""),
-                    industry=pos_data.get("industry", ""),
+                    industry=ind,
+                    partial_taken=bool(pos_data.get("partial_taken", False)),
                 )
 
             self.trade_history = []
@@ -177,10 +198,13 @@ class PortfolioManager:
 
             # 3. Fetch Live Demat Holdings & CNC Positions from Exchange
             exchange_stocks: Dict[str, Dict[str, Any]] = {}
+            holdings_ok = False
+            positions_ok = False
 
             # A. Holdings (Settled Demat + T1 unsettled)
             try:
                 demat_holdings = kite.holdings() or []
+                holdings_ok = True
                 for h in demat_holdings:
                     sym = str(h.get("tradingsymbol", "")).strip().upper()
                     qty = int(h.get("quantity", 0)) + int(h.get("t1_quantity", 0))
@@ -199,6 +223,7 @@ class PortfolioManager:
             # B. Net Positions (e.g. fresh CNC buys executed today not yet in Demat)
             try:
                 pos_resp = kite.positions() or {}
+                positions_ok = True
                 net_positions = pos_resp.get("net", []) or []
                 for p in net_positions:
                     sym = str(p.get("tradingsymbol", "")).strip().upper()
@@ -221,41 +246,83 @@ class PortfolioManager:
 
             result["holdings_count"] = len(exchange_stocks)
 
-            # 4. Reconcile with strategy portfolio
+            # 4. Reconcile with strategy portfolio (run even when exchange_stocks is empty if API calls succeeded)
             today_str = datetime.now().strftime("%Y-%m-%d")
 
-            # Check for closed positions (held locally in portfolio_state but no longer in exchange)
-            if exchange_stocks:
-                for sym in list(self.positions.keys()):
-                    if sym not in exchange_stocks:
-                        logger.info("Stock %s sold on exchange. Reconciling exit.", sym)
-                        pos = self.positions.pop(sym)
-                        exit_price = pos.entry_price
-                        trade = TradeRecord(
-                            symbol=sym,
-                            entry_date=pos.entry_date,
-                            exit_date=today_str,
-                            entry_price=pos.entry_price,
-                            exit_price=exit_price,
-                            quantity=pos.quantity,
-                            invested_amount=pos.invested_amount,
-                            exit_amount=pos.invested_amount,
-                            pnl=0.0,
-                            pnl_pct=0.0,
-                            exit_reason="Sold externally on Zerodha Exchange",
-                        )
-                        self.trade_history.append(trade)
-                        result["positions_closed"] += 1
+            if holdings_ok and positions_ok:
+                missing_syms = [s for s in self.positions.keys() if s not in exchange_stocks]
+                ltp_prices: Dict[str, float] = {}
+                if missing_syms:
+                    try:
+                        ltp_resp = kite.ltp([f"NSE:{s}" for s in missing_syms]) or {}
+                        for s in missing_syms:
+                            key = f"NSE:{s}"
+                            if key in ltp_resp and ltp_resp[key].get("last_price"):
+                                ltp_prices[s] = float(ltp_resp[key]["last_price"])
+                    except Exception:
+                        pass
+
+                # Close positions no longer held on exchange
+                for sym in missing_syms:
+                    logger.info("Stock %s sold on exchange. Reconciling exit.", sym)
+                    pos = self.positions.pop(sym)
+                    exit_price = ltp_prices.get(sym, pos.entry_price)
+                    exit_amount = round(exit_price * pos.quantity, 2)
+                    pnl = round(exit_amount - pos.invested_amount, 2)
+                    pnl_pct = round((pnl / pos.invested_amount) * 100.0, 2) if pos.invested_amount > 0 else 0.0
+                    trade = TradeRecord(
+                        symbol=sym,
+                        entry_date=pos.entry_date,
+                        exit_date=today_str,
+                        entry_price=pos.entry_price,
+                        exit_price=exit_price,
+                        quantity=pos.quantity,
+                        invested_amount=pos.invested_amount,
+                        exit_amount=exit_amount,
+                        pnl=pnl,
+                        pnl_pct=pnl_pct,
+                        exit_reason="Sold externally on Zerodha Exchange",
+                    )
+                    self.trade_history.append(trade)
+                    result["positions_closed"] += 1
 
                 # Add / update existing positions from exchange
                 for sym, ex_data in exchange_stocks.items():
+                    ind = self._symbol_industry_map.get(sym, "")
                     if sym in self.positions:
-                        self.positions[sym].quantity = ex_data["quantity"]
+                        pos = self.positions[sym]
+                        if not pos.industry and ind:
+                            pos.industry = ind
+
+                        new_qty = ex_data["quantity"]
+                        if 0 < new_qty < pos.quantity:
+                            sold_qty = pos.quantity - new_qty
+                            sell_px = ex_data["last_price"] if ex_data["last_price"] > 0 else pos.entry_price
+                            sold_cost = round(pos.entry_price * sold_qty, 2)
+                            exit_amt = round(sell_px * sold_qty, 2)
+                            pnl = round(exit_amt - sold_cost, 2)
+                            pnl_pct = round((pnl / sold_cost) * 100.0, 2) if sold_cost > 0 else 0.0
+                            self.trade_history.append(
+                                TradeRecord(
+                                    symbol=sym,
+                                    entry_date=pos.entry_date,
+                                    exit_date=today_str,
+                                    entry_price=pos.entry_price,
+                                    exit_price=sell_px,
+                                    quantity=sold_qty,
+                                    invested_amount=sold_cost,
+                                    exit_amount=exit_amt,
+                                    pnl=pnl,
+                                    pnl_pct=pnl_pct,
+                                    exit_reason="Partial Profit-Take / External Trim",
+                                )
+                            )
+                            pos.partial_taken = True
+
+                        pos.quantity = new_qty
                         if ex_data["average_price"] > 0:
-                            self.positions[sym].entry_price = ex_data["average_price"]
-                        self.positions[sym].invested_amount = round(
-                            self.positions[sym].entry_price * self.positions[sym].quantity, 2
-                        )
+                            pos.entry_price = ex_data["average_price"]
+                        pos.invested_amount = round(pos.entry_price * pos.quantity, 2)
                     else:
                         if len(self.positions) < self.max_positions:
                             avg_px = ex_data["average_price"]
@@ -268,6 +335,7 @@ class PortfolioManager:
                                 quantity=qty,
                                 invested_amount=invested,
                                 notes=f"Auto-synced from {ex_data['source']}",
+                                industry=ind,
                             )
                             result["positions_synced"] += 1
 
@@ -301,16 +369,23 @@ class PortfolioManager:
         """Number of open stock slots remaining (out of 10)."""
         return max(0, self.max_positions - len(self.positions))
 
-    def get_total_equity(self) -> float:
-        """Return total portfolio equity (cash + invested amount in open positions)."""
+    def get_total_equity(self, current_prices: Optional[Dict[str, float]] = None) -> float:
+        """Return total portfolio equity (cash + market value if current_prices given, else invested amount)."""
+        if current_prices:
+            open_val = sum(
+                current_prices.get(sym, pos.entry_price) * pos.quantity
+                for sym, pos in self.positions.items()
+            )
+            return round(self.cash_balance + open_val, 2)
         invested = sum(pos.invested_amount for pos in self.positions.values())
-        return self.cash_balance + invested
+        return round(self.cash_balance + invested, 2)
 
     def calculate_quantity(
         self,
         price: float,
         stop_price: Optional[float] = None,
         current_equity: Optional[float] = None,
+        available_cash: Optional[float] = None,
     ) -> int:
         """
         Calculate quantity of shares.
@@ -318,7 +393,7 @@ class PortfolioManager:
             Risk Amount = Equity * (risk_per_trade_pct / 100)
             Risk Per Share = max(price - stop_price, price * 0.02)
             Quantity = floor(Risk Amount / Risk Per Share)
-            Capped by max_position_size_pct and cash balance.
+            Capped by max_position_size_pct and available cash balance.
         Otherwise:
             Quantity = floor(position_size / price)
         """
@@ -326,6 +401,7 @@ class PortfolioManager:
             return 0
 
         eq = current_equity if current_equity is not None else self.get_total_equity()
+        cash_cap = self.cash_balance if available_cash is None else available_cash
 
         if getattr(self.config.capital, "sizing_mode", "fixed") == "risk_pct":
             risk_pct = getattr(self.config.capital, "risk_per_trade_pct", 1.25)
@@ -338,15 +414,15 @@ class PortfolioManager:
             risk_budget = eq * (risk_pct / 100.0)
             qty = int(risk_budget // risk_per_share)
 
-            # Cap by max position allocation (e.g. 15% of equity = ₹15,000 on ₹1,00,000)
+            # Cap by max position allocation (e.g. 15% of equity = ₹30,000 on ₹2,00,000)
             max_pos_budget = eq * (max_alloc_pct / 100.0)
             qty = min(qty, int(max_pos_budget // price))
 
             # Cap by available cash in strategy portfolio
-            qty = min(qty, int(self.cash_balance // price))
+            qty = min(qty, int(cash_cap // price))
             return max(0, qty)
         else:
-            alloc = min(self.position_size, self.cash_balance)
+            alloc = min(self.position_size, cash_cap)
             return max(0, int(alloc // price))
 
     def get_sector_counts(self) -> Dict[str, int]:
@@ -437,6 +513,62 @@ class PortfolioManager:
         self._reconcile_cash()
         self.save_state()
         logger.info("Closed position: %s @ ₹%.2f (PnL: ₹%.2f / %.2f%%) - Reason: %s", symbol, exit_price, pnl, pnl_pct, exit_reason)
+        return trade
+
+    def partial_close_position(
+        self,
+        symbol: str,
+        exit_price: float,
+        fraction: float = 0.5,
+        exit_date: Optional[str] = None,
+        exit_reason: str = "Partial Profit-Take (50% @ +30%)",
+    ) -> Optional[TradeRecord]:
+        """Partially close an active position (e.g. book 50% profits at +30%) and recycle cash."""
+        if symbol not in self.positions:
+            logger.warning("Cannot partial-exit %s: stock not found in active portfolio.", symbol)
+            return None
+
+        pos = self.positions[symbol]
+        trim_qty = int(pos.quantity * fraction)
+        if trim_qty <= 0 or trim_qty >= pos.quantity:
+            logger.warning("Cannot partial-exit %s (qty=%d, fraction=%.2f): invalid trim quantity %d.", symbol, pos.quantity, fraction, trim_qty)
+            return None
+
+        today_str = exit_date or datetime.now().strftime("%Y-%m-%d")
+        trim_cost = round(pos.entry_price * trim_qty, 2)
+        exit_amount = round(exit_price * trim_qty, 2)
+        pnl = round(exit_amount - trim_cost, 2)
+        pnl_pct = round((pnl / trim_cost) * 100.0, 2) if trim_cost > 0 else 0.0
+
+        pos.quantity -= trim_qty
+        pos.invested_amount = round(pos.entry_price * pos.quantity, 2)
+        pos.partial_taken = True
+
+        trade = TradeRecord(
+            symbol=symbol,
+            entry_date=pos.entry_date,
+            exit_date=today_str,
+            entry_price=pos.entry_price,
+            exit_price=exit_price,
+            quantity=trim_qty,
+            invested_amount=trim_cost,
+            exit_amount=exit_amount,
+            pnl=pnl,
+            pnl_pct=pnl_pct,
+            exit_reason=exit_reason,
+        )
+        self.trade_history.append(trade)
+        self._reconcile_cash()
+        self.save_state()
+        logger.info(
+            "Partial exit: %s x%d @ ₹%.2f (Remaining: %d | PnL: ₹%.2f / %.2f%%)",
+            symbol,
+            trim_qty,
+            exit_price,
+            pos.quantity,
+            pnl,
+            pnl_pct,
+        )
         return trade
 
     def get_portfolio_summary(self, current_prices: Optional[Dict[str, float]] = None) -> Dict[str, Any]:

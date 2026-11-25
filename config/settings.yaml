@@ -19,6 +19,9 @@ strategy:
   exit_on_stage2_break: true # Two-Tier Exit: Exit when Close < 50 EMA (Stage 2 trend breakdown)
   profit_lock_threshold_pct: 25.0 # Two-Tier Exit: Lock gains once stock is up >= +25%
   profit_lock_ema_len: 20 # Two-Tier Exit: Exit when Close < 20 EMA once profit threshold reached
+  partial_tp_enabled: true # Partial Profit-Taking: Book 50% at +30% gain to lock profits & recycle cash
+  partial_tp_threshold_pct: 30.0 # Trigger partial trim once unrealized gain >= +30%
+  partial_tp_fraction: 0.5 # Fraction of shares to sell on partial profit-take
   max_loss_holding_days: 20 # Tenure Rebalance: Cut losing positions if held >= 20 trading days
   atr_len: 14 # ATR period if enabled
   atr_mult: 2.0 # ATR multiplier if enabled

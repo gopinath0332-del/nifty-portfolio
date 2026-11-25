@@ -66,28 +66,55 @@ class MarketDataFetcher:
             DataFrame with columns ['date', 'open', 'high', 'low', 'close', 'volume'].
         """
         cache_file = self.cache_dir / f"{symbol}_{instrument_token}.csv"
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        now = datetime.now()
+        # Expected latest trading day (Friday on weekends)
+        if now.weekday() == 5:
+            expected_dt = now - timedelta(days=1)
+        elif now.weekday() == 6:
+            expected_dt = now - timedelta(days=2)
+        else:
+            expected_dt = now
+        expected_date_str = expected_dt.strftime("%Y-%m-%d")
+
+        cached_df: Optional[pd.DataFrame] = None
+        last_cached_date: Optional[str] = None
 
         # Check cache freshness
         if use_cache and cache_file.exists():
             try:
-                df = pd.read_csv(cache_file)
-                if not df.empty and "date" in df.columns:
-                    last_date = str(df["date"].iloc[-1]).split(" ")[0].split("T")[0]
-                    # If cached data is up to date with today or Friday (on weekends), use cache
-                    if last_date == today_str or len(df) >= 250:
-                        # If cached today, return cached data
-                        return df
+                cached_df = pd.read_csv(cache_file)
+                if not cached_df.empty and "date" in cached_df.columns:
+                    last_cached_date = str(cached_df["date"].iloc[-1]).split(" ")[0].split("T")[0]
+                    if last_cached_date >= expected_date_str:
+                        return cached_df
             except Exception as e:
                 logger.debug("Failed reading cache for %s: %s", symbol, e)
+                cached_df = None
+                last_cached_date = None
 
         if not self.kite:
+            if cached_df is not None:
+                return cached_df
             if cache_file.exists():
                 return pd.read_csv(cache_file)
             return None
 
-        to_date = datetime.now()
-        from_date = to_date - timedelta(days=days)
+        to_date = now
+        is_incremental = (
+            use_cache
+            and cached_df is not None
+            and not cached_df.empty
+            and last_cached_date is not None
+            and len(cached_df) >= min(days // 2, 180)
+        )
+        if is_incremental:
+            try:
+                from_date = datetime.strptime(last_cached_date, "%Y-%m-%d") - timedelta(days=5)
+            except ValueError:
+                from_date = to_date - timedelta(days=days)
+                is_incremental = False
+        else:
+            from_date = to_date - timedelta(days=days)
 
         self._wait_for_rate_limit()
 
@@ -103,12 +130,19 @@ class MarketDataFetcher:
                     oi=False,
                 )
                 if not records:
-                    return None
+                    return cached_df if cached_df is not None else None
 
                 df = pd.DataFrame(records)
                 # Standardize column names
                 rename_map = {"date": "date", "open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume"}
                 df = df[[c for c in rename_map.keys() if c in df.columns]]
+
+                if is_incremental and cached_df is not None:
+                    combined = pd.concat([cached_df, df], ignore_index=True)
+                    combined["_date_key"] = combined["date"].astype(str).str.slice(0, 10)
+                    combined = combined.drop_duplicates(subset=["_date_key"], keep="last")
+                    combined = combined.sort_values("_date_key").drop(columns=["_date_key"]).reset_index(drop=True)
+                    df = combined
 
                 # Save to cache
                 if use_cache:
@@ -125,5 +159,5 @@ class MarketDataFetcher:
                     logger.error("Error fetching historical candles for %s (%d): %s", symbol, instrument_token, e)
                     break
 
-        return None
+        return cached_df if cached_df is not None else None
 

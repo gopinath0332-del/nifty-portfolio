@@ -39,6 +39,7 @@ class ExitSignal:
     exit_reason: str
     pnl: float
     pnl_pct: float
+    is_partial: bool = False
 
 
 @dataclass
@@ -56,6 +57,7 @@ class EntryCandidate:
     dist_52w_pct: float
     composite_score: float
     rank: int = 0
+    stop_price: float = 0.0
 
 
 @dataclass
@@ -106,6 +108,7 @@ class StrategyEngine:
 
         exits: List[ExitSignal] = []
         breakout_candidates: List[EntryCandidate] = []
+        live_prices: Dict[str, float] = {}
         scanned_count = 0
 
         stocks_to_scan = universe[:max_stocks_to_scan] if max_stocks_to_scan else universe
@@ -144,12 +147,15 @@ class StrategyEngine:
                 enable_52w_filter=False,
             )
 
-            # Two-Tier Exit Evaluation:
+            # Exit Evaluation (Full Exits + 50% Partial Profit-Taking at +30%):
             # 1. Hard Stop Loss (-8.0%)
-            # 2. Profit Lock: If gain >= +25% and Close < 20 EMA (exhaustion)
-            # 3. Stage 2 Breakdown: Close < 50 EMA
-            # 4. Fallback: Channel Exit (Close < exit_len-Day Low[1])
+            # 2. Tenure Loss Cut (held >= 20d & unrealized loss < 0)
+            # 3. Profit Lock: If gain >= +25% and Close < 20 EMA (exhaustion)
+            # 4. Stage 2 Breakdown: Close < 50 EMA
+            # 5. Fallback: Channel Exit (Close < exit_len-Day Low[1])
+            # 6. Partial Profit-Take: If gain >= +30% and not yet trimmed, sell 50%
             close = eval_res["close"]
+            live_prices[sym] = close
             ema_20 = eval_res.get("ema_20", 0.0)
             ema_50 = eval_res.get("ema_50", 0.0)
             low_20_prev = eval_res.get("low_20_prev", 0.0)
@@ -162,6 +168,9 @@ class StrategyEngine:
             profit_thresh = getattr(self.config.strategy, "profit_lock_threshold_pct", 25.0)
             exit_stage2 = getattr(self.config.strategy, "exit_on_stage2_break", True)
             max_loss_days = getattr(self.config.strategy, "max_loss_holding_days", 20)
+            partial_tp_enabled = getattr(self.config.strategy, "partial_tp_enabled", True)
+            partial_tp_thresh = getattr(self.config.strategy, "partial_tp_threshold_pct", 30.0)
+            partial_tp_frac = getattr(self.config.strategy, "partial_tp_fraction", 0.5)
 
             # Calculate trading days held
             entry_dt_str = pos.entry_date
@@ -180,6 +189,8 @@ class StrategyEngine:
                     pass
 
             exit_triggered = False
+            is_partial_exit = False
+            exit_qty = pos.quantity
             reason = ""
 
             if is_hard_stop:
@@ -197,9 +208,21 @@ class StrategyEngine:
             elif is_channel_exit:
                 exit_triggered = True
                 reason = f"{self.config.strategy.exit_len}-Day Low Channel Breakdown"
+            elif (
+                partial_tp_enabled
+                and not getattr(pos, "partial_taken", False)
+                and pos.quantity >= 2
+                and unrealized_pnl_pct >= partial_tp_thresh
+            ):
+                trim_qty = int(pos.quantity * partial_tp_frac)
+                if 0 < trim_qty < pos.quantity:
+                    exit_triggered = True
+                    is_partial_exit = True
+                    exit_qty = trim_qty
+                    reason = f"Partial Profit-Take ({int(partial_tp_frac * 100)}% @ +{unrealized_pnl_pct:.1f}%)"
 
             if exit_triggered:
-                pnl = round((close - pos.entry_price) * pos.quantity, 2)
+                pnl = round((close - pos.entry_price) * exit_qty, 2)
                 pnl_pct = round(unrealized_pnl_pct, 2)
                 exits.append(
                     ExitSignal(
@@ -207,17 +230,28 @@ class StrategyEngine:
                         company_name=stock_info.company_name,
                         close_price=close,
                         entry_price=pos.entry_price,
-                        quantity=pos.quantity,
+                        quantity=exit_qty,
                         low_20_level=low_20_prev,
                         exit_reason=reason,
                         pnl=pnl,
                         pnl_pct=pnl_pct,
+                        is_partial=is_partial_exit,
                     )
                 )
 
-        # After exits, effective available slots for new entries:
-        effective_open_slots = min(self.portfolio.max_positions, initial_open_slots + len(exits))
-        logger.info("Found %d exit signals. Effective open slots for new entries: %d", len(exits), effective_open_slots)
+        # Partial exits recycle cash without freeing a portfolio slot; full exits free both slot and cash.
+        full_exits_count = sum(1 for e in exits if not e.is_partial)
+        effective_open_slots = min(self.portfolio.max_positions, initial_open_slots + full_exits_count)
+        mtm_equity = self.portfolio.get_total_equity(current_prices=live_prices)
+        projected_cash = self.portfolio.cash_balance + sum(e.close_price * e.quantity for e in exits)
+        logger.info(
+            "Found %d exit signals (%d full, %d partial). Effective open slots: %d | Projected cash: ₹%.2f",
+            len(exits),
+            full_exits_count,
+            len(exits) - full_exits_count,
+            effective_open_slots,
+            projected_cash,
+        )
 
         # ------------------------------------------------------------------
         # Phase 2: Market Regime Check (Nifty 500 >= 50 EMA)
@@ -258,8 +292,8 @@ class StrategyEngine:
         # ------------------------------------------------------------------
         for stock in stocks_to_scan:
             sym = stock.symbol
-            # Skip if already in portfolio and not exiting today
-            if sym in self.portfolio.positions and not any(e.symbol == sym for e in exits):
+            # Skip if already in portfolio and not undergoing a full exit today
+            if sym in self.portfolio.positions and not any(e.symbol == sym and not e.is_partial for e in exits):
                 continue
 
             inst_token = stock.instrument_token
@@ -302,7 +336,12 @@ class StrategyEngine:
 
                 hard_stop = close * (1.0 - self.config.strategy.max_loss_stop_pct / 100.0)
                 stop_px = max(eval_res.get("low_20_prev", hard_stop), hard_stop)
-                suggested_qty = self.portfolio.calculate_quantity(close, stop_price=stop_px)
+                suggested_qty = self.portfolio.calculate_quantity(
+                    close,
+                    stop_price=stop_px,
+                    current_equity=mtm_equity,
+                    available_cash=projected_cash,
+                )
                 if suggested_qty <= 0:
                     continue
 
@@ -322,11 +361,12 @@ class StrategyEngine:
                         high_52w=round(eval_res["high_52w"], 2),
                         dist_52w_pct=round(eval_res["dist_52w_high_pct"], 2),
                         composite_score=round(eval_res["composite_score"], 2),
+                        stop_price=stop_px,
                     )
                 )
 
         # ------------------------------------------------------------------
-        # Phase 3: Rank Candidates and Enforce Sector Diversification Limit
+        # Phase 4: Rank Candidates, Enforce Sector Cap & Sequential Cash Budget
         # ------------------------------------------------------------------
         # Sort descending by composite score
         breakout_candidates.sort(key=lambda c: c.composite_score, reverse=True)
@@ -336,6 +376,7 @@ class StrategyEngine:
 
         max_per_sector = self.config.capital.max_per_sector
         sector_counts = self.portfolio.get_sector_counts()
+        remaining_cash = projected_cash
 
         recommended: List[EntryCandidate] = []
         runner_ups: List[EntryCandidate] = []
@@ -345,10 +386,21 @@ class StrategyEngine:
             cur_sec_count = sector_counts.get(cand_sec, 0)
 
             if len(recommended) < effective_open_slots and (max_per_sector <= 0 or cur_sec_count < max_per_sector):
-                recommended.append(cand)
-                sector_counts[cand_sec] = cur_sec_count + 1
-            else:
-                runner_ups.append(cand)
+                qty = self.portfolio.calculate_quantity(
+                    cand.close_price,
+                    stop_price=cand.stop_price,
+                    current_equity=mtm_equity,
+                    available_cash=remaining_cash,
+                )
+                if qty > 0:
+                    cand.suggested_qty = qty
+                    cand.investment_amount = round(cand.close_price * qty, 2)
+                    remaining_cash = max(0.0, remaining_cash - cand.investment_amount)
+                    recommended.append(cand)
+                    sector_counts[cand_sec] = cur_sec_count + 1
+                    continue
+
+            runner_ups.append(cand)
 
         logger.info(
             "Scan completed: %d scanned, %d breakouts found, %d recommended entries for %d open slots",

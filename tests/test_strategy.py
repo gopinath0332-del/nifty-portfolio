@@ -384,6 +384,255 @@ def test_rsi_on_ema_gap_up_indicators():
     assert compute_wilder_rsi(rising, length=14).iloc[-1] == pytest.approx(100.0)
 
 
+def test_market_data_stale_cache_incremental_refresh():
+    """Verify MarketDataFetcher refreshes stale >=250-row caches incrementally instead of serving old data."""
+    from datetime import datetime, timedelta
+    from src.market_data import MarketDataFetcher
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        cfg = AppConfig(files=FilesConfig(cache_dir=temp_dir))
+        old_end = (datetime.now() - timedelta(days=10)).date()
+        old_dates = pd.bdate_range(end=old_end, periods=260)
+        n_rows = len(old_dates)
+        stale_df = pd.DataFrame({
+            "date": [d.strftime("%Y-%m-%d 00:00:00+05:30") for d in old_dates],
+            "open": np.full(n_rows, 100.0),
+            "high": np.full(n_rows, 102.0),
+            "low": np.full(n_rows, 99.0),
+            "close": np.full(n_rows, 101.0),
+            "volume": np.full(n_rows, 100000),
+        })
+
+        fetcher_dir = os.path.join(temp_dir, "daily_candles")
+        os.makedirs(fetcher_dir, exist_ok=True)
+        cache_file = os.path.join(fetcher_dir, "TEST_123.csv")
+        stale_df.to_csv(cache_file, index=False)
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
+
+        class MockKiteHist:
+            def __init__(self):
+                self.calls = 0
+            def historical_data(self, instrument_token, from_date, to_date, interval, continuous, oi):
+                self.calls += 1
+                return [{
+                    "date": f"{today_str} 00:00:00+05:30",
+                    "open": 105.0,
+                    "high": 107.0,
+                    "low": 104.0,
+                    "close": 106.5,
+                    "volume": 150000,
+                }]
+
+        mock_kite = MockKiteHist()
+        fetcher = MarketDataFetcher(cfg, kite=mock_kite)
+        df = fetcher.fetch_daily_candles(123, "TEST", days=365, use_cache=True)
+
+        assert mock_kite.calls == 1
+        assert df is not None
+        assert str(df["date"].iloc[-1]).startswith(today_str)
+        assert float(df["close"].iloc[-1]) == 106.5
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_sync_with_exchange_empty_holdings_and_partial_trim_and_sector():
+    """Verify sync_with_exchange closes all positions on empty holdings, populates sectors, and tracks partial trims."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        state_file = os.path.join(temp_dir, "state_sync.json")
+        cfg = AppConfig(
+            capital=CapitalConfig(total_capital=200000.0, position_size=20000.0, max_positions=10),
+            files=FilesConfig(state_file=state_file),
+        )
+        pm = PortfolioManager(cfg)
+        pm.add_position("RELIANCE", entry_price=1000.0, quantity=20)
+        pm.add_position("TCS", entry_price=3000.0, quantity=10)
+        assert len(pm.positions) == 2
+
+        # 1. Partial trim on RELIANCE (20 -> 10 shares) + TCS still held
+        class MockKitePartial:
+            def profile(self):
+                return {"user_id": "U1", "user_name": "Tester"}
+            def margins(self, seg):
+                return {"available": {"live_balance": 200000.0}, "net": 200000.0}
+            def holdings(self):
+                return [
+                    {"tradingsymbol": "RELIANCE", "quantity": 10, "t1_quantity": 0, "average_price": 1000.0, "last_price": 1300.0, "pnl": 3000.0},
+                    {"tradingsymbol": "TCS", "quantity": 10, "t1_quantity": 0, "average_price": 3000.0, "last_price": 3100.0, "pnl": 1000.0},
+                ]
+            def positions(self):
+                return {"net": []}
+
+        pm.sync_with_exchange(MockKitePartial())
+        assert pm.positions["RELIANCE"].quantity == 10
+        assert pm.positions["RELIANCE"].partial_taken is True
+        assert pm.positions["RELIANCE"].industry != ""
+        # Sold 10 RELIANCE @ 1300 (cost 1000) -> +3000 realized; remaining invested = 10000 + 30000 = 40000 -> cash = 163000
+        assert pm.cash_balance == 163000.0
+
+        # 2. All holdings closed externally -> exchange_stocks empty must still close all positions
+        class MockKiteEmpty:
+            def profile(self):
+                return {"user_id": "U1", "user_name": "Tester"}
+            def margins(self, seg):
+                return {"available": {"live_balance": 200000.0}, "net": 200000.0}
+            def holdings(self):
+                return []
+            def positions(self):
+                return {"net": []}
+            def ltp(self, instruments):
+                return {"NSE:RELIANCE": {"last_price": 1400.0}, "NSE:TCS": {"last_price": 3100.0}}
+
+        res_empty = pm.sync_with_exchange(MockKiteEmpty())
+        assert res_empty["positions_closed"] == 2
+        assert len(pm.positions) == 0
+        assert pm.open_slots == 10
+        # Realized PnL: +3000 (partial) + 4000 (RELIANCE rem) + 1000 (TCS) = +8000 -> cash = 208000
+        assert pm.cash_balance == 208000.0
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_strategy_partial_tp_and_sequential_cash_depletion():
+    """Verify StrategyEngine triggers 50% partial TP at +30% without freeing a slot and depletes cash sequentially."""
+    from src.strategy import StrategyEngine
+    from src.universe import StockInfo
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        state_file = os.path.join(temp_dir, "state_strat.json")
+        cfg = AppConfig(
+            capital=CapitalConfig(
+                total_capital=200000.0,
+                position_size=20000.0,
+                max_positions=10,
+                max_per_sector=3,
+                sizing_mode="risk_pct",
+                risk_per_trade_pct=1.25,
+                max_position_size_pct=15.0,
+            ),
+            strategy=StrategyConfig(
+                entry_len=20,
+                exit_len=20,
+                partial_tp_enabled=True,
+                partial_tp_threshold_pct=30.0,
+                partial_tp_fraction=0.5,
+            ),
+            filters=FilterConfig(
+                near_52w_high_enabled=False,
+                stage_2_trend_enabled=False,
+                min_stock_price=100.0,
+                min_20d_avg_volume=1000,
+            ),
+            market_regime=cfg_mr if False else __import__("src.config", fromlist=["MarketRegimeConfig"]).MarketRegimeConfig(enabled=False),
+            files=FilesConfig(state_file=state_file),
+        )
+        pm = PortfolioManager(cfg)
+        # Active position bought at 100, currently at 135 (+35% >= +30%) -> should trigger 50% partial exit (100 of 200)
+        pm.add_position("WINNER", entry_price=100.0, quantity=200, entry_date="2026-10-01", industry="IT")
+        # Invested = 20,000 -> remaining cash = 180,000
+
+        dates = pd.bdate_range(end="2026-11-25", periods=40)
+
+        def make_df(last_close, breakout=False):
+            closes = np.linspace(100.0, 120.0, 40)
+            highs = closes + 1.0
+            lows = closes - 1.0
+            if breakout:
+                closes[-1] = last_close
+                highs[-1] = last_close + 1.0
+            else:
+                closes[-1] = last_close
+                highs[-1] = last_close + 1.0
+            return pd.DataFrame({
+                "date": dates,
+                "open": closes - 0.5,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": np.full(40, 100000),
+            })
+
+        class StubFetcher:
+            def fetch_daily_candles(self, instrument_token, symbol, days=365, use_cache=True):
+                if symbol == "WINNER":
+                    return make_df(135.0, breakout=False)
+                return make_df(200.0, breakout=True)
+
+        universe = [StockInfo(symbol="WINNER", company_name="Winner Ltd", industry="IT", instrument_token=1)]
+        # Create 8 breakout candidates across distinct sectors; at ~30k each, cash (~193.5k) cannot fund all 8 at 30k each
+        for i in range(8):
+            universe.append(StockInfo(symbol=f"CAND{i}", company_name=f"Cand {i}", industry=f"Sec{i}", instrument_token=10 + i))
+
+        engine = StrategyEngine(cfg, portfolio=pm, fetcher=StubFetcher())
+        res = engine.run_daily_scan(universe=universe, use_cache=True)
+
+        # Partial exit triggered for WINNER (100 of 200 shares), did NOT free WINNER's slot (open_slots stays 9)
+        assert len(res.exits) == 1
+        assert res.exits[0].symbol == "WINNER"
+        assert res.exits[0].is_partial is True
+        assert res.exits[0].quantity == 100
+        assert res.open_slots_before == 9
+
+        # Total recommended investment must strictly fit within projected cash (180,000 + 13,500 = 193,500)
+        total_rec_inv = sum(c.investment_amount for c in res.recommended_entries)
+        assert total_rec_inv <= 193500.0
+        assert len(res.recommended_entries) <= 9
+        assert all(c.symbol != "WINNER" for c in res.recommended_entries)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_backtester_partial_profit_taking():
+    """Verify PortfolioBacktester executes 50% partial TP at +30% on T+1 Open and tracks total trade PnL."""
+    from scripts.backtest import PortfolioBacktester
+
+    dates = pd.bdate_range(start="2026-01-01", periods=80)
+    # Flat base for 50 days, breakout on day 51 (entry on day 52 Open = 110),
+    # rally to 155 (+40.9% >= +30%) on days 55-74 (partial TP at 155; 20 EMA climbs > 145),
+    # then pull back to 140 (+27.3% >= +25% & < 20 EMA) for Profit Lock exit.
+    closes = np.full(80, 100.0)
+    closes[51:55] = 110.0   # Breakout above 50D high (101)
+    closes[55:75] = 155.0   # +40.9% above 110 -> triggers 50% partial TP; 20 EMA climbs > 145
+    closes[75:] = 140.0     # Drops below 20 EMA while >= +25% -> Profit Lock full exit
+
+    df = pd.DataFrame({
+        "date": dates,
+        "dt": dates.tz_localize(None),
+        "open": closes,
+        "high": closes + 1.0,
+        "low": closes - 1.0,
+        "close": closes,
+        "volume": np.full(80, 100000),
+    })
+    from src.indicators import compute_indicators
+    df_ind = compute_indicators(df, entry_len=50, exit_len=20, lookback_52w=252)
+
+    bt = PortfolioBacktester(
+        initial_capital=200000.0,
+        position_size=20000.0,
+        entry_len=50,
+        exit_len=20,
+        use_market_regime=False,
+        use_stage_2=False,
+        within_52w_pct=50.0,
+        partial_tp_enabled=True,
+        partial_tp_threshold_pct=30.0,
+        partial_tp_fraction=0.5,
+        start_date="2026-01-01",
+    )
+    res = bt.run({"PARTIAL_TEST": df_ind})
+    assert res["total_trades"] == 1
+    tr = res["closed_trades"][0]
+    # Half exited at 155 (+40.9%) and half exited at 140 (+27.3%) -> blended ~ +34.1%
+    assert tr.pnl_pct > 30.0
+    assert res["ending_equity"] > 200000.0
+
+
+
+
 
 
 

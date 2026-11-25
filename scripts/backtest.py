@@ -80,6 +80,9 @@ class PortfolioBacktester:
         exit_on_stage2_break: bool = True,
         profit_lock_threshold_pct: float = 25.0,
         profit_lock_ema_len: int = 20,
+        partial_tp_enabled: bool = True,
+        partial_tp_threshold_pct: float = 30.0,
+        partial_tp_fraction: float = 0.5,
         max_loss_holding_days: int = 20,
         universe_csv: Optional[str] = None,
         allowed_symbols: Optional[List[str]] = None,
@@ -102,6 +105,9 @@ class PortfolioBacktester:
         self.exit_on_stage2_break = exit_on_stage2_break
         self.profit_lock_threshold_pct = profit_lock_threshold_pct
         self.profit_lock_ema_len = profit_lock_ema_len
+        self.partial_tp_enabled = partial_tp_enabled
+        self.partial_tp_threshold_pct = partial_tp_threshold_pct
+        self.partial_tp_fraction = partial_tp_fraction
         self.max_loss_holding_days = max_loss_holding_days
         self.start_date = pd.to_datetime(start_date).tz_localize(None) if start_date else None
         self.end_date = pd.to_datetime(end_date).tz_localize(None) if end_date else None
@@ -206,8 +212,9 @@ class PortfolioBacktester:
         equity_curve: List[Tuple[pd.Timestamp, float, float, int]] = []  # (date, total_equity, cash, num_positions)
 
         # Pending orders for execution next day at open
-        pending_exits = {}   # sym -> reason
-        pending_entries = [] # list of (sym, suggested_qty, score)
+        pending_exits = {}    # sym -> reason
+        pending_partials = {} # sym -> fraction
+        pending_entries = []  # list of (sym, close, score, low_20_prev)
 
         for current_idx, current_dt in enumerate(sorted_dates):
             date_str = current_dt.strftime("%Y-%m-%d")
@@ -222,20 +229,23 @@ class PortfolioBacktester:
                         row = stk_map.loc[current_dt]
                         open_px = float(row["open"])
                         pos = positions.pop(sym)
-                        exit_val = open_px * pos["qty"]
-                        pnl = exit_val - pos["invested"]
-                        pnl_pct = (pnl / pos["invested"]) * 100.0
+                        rem_exit_val = open_px * pos["qty"]
+                        total_exit_val = rem_exit_val + pos.get("partial_exit_val", 0.0)
+                        orig_invested = pos.get("orig_invested", pos["invested"])
+                        pnl = total_exit_val - orig_invested
+                        pnl_pct = (pnl / orig_invested) * 100.0 if orig_invested > 0 else 0.0
                         holding_days = (current_dt - pos["entry_dt"]).days
 
                         peak_h = max(pos.get("peak_high", pos["entry_price"]), open_px)
                         trough_l = min(pos.get("trough_low", pos["entry_price"]), open_px)
                         mfe_pct = ((peak_h - pos["entry_price"]) / pos["entry_price"]) * 100.0
                         mae_pct = ((trough_l - pos["entry_price"]) / pos["entry_price"]) * 100.0
-                        mfe_pnl = (peak_h - pos["entry_price"]) * pos["qty"]
-                        mae_pnl = (trough_l - pos["entry_price"]) * pos["qty"]
+                        orig_qty = pos.get("orig_qty", pos["qty"])
+                        mfe_pnl = (peak_h - pos["entry_price"]) * orig_qty
+                        mae_pnl = (trough_l - pos["entry_price"]) * orig_qty
                         capture_ratio = (pnl / mfe_pnl * 100.0) if mfe_pnl > 0 and pnl > 0 else 0.0
 
-                        cash += exit_val
+                        cash += rem_exit_val
                         closed_trades.append(
                             SimTrade(
                                 symbol=sym,
@@ -243,9 +253,9 @@ class PortfolioBacktester:
                                 exit_date=date_str,
                                 entry_price=pos["entry_price"],
                                 exit_price=open_px,
-                                quantity=pos["qty"],
-                                invested=pos["invested"],
-                                exit_val=exit_val,
+                                quantity=orig_qty,
+                                invested=orig_invested,
+                                exit_val=total_exit_val,
                                 pnl=pnl,
                                 pnl_pct=pnl_pct,
                                 holding_days=holding_days,
@@ -259,6 +269,24 @@ class PortfolioBacktester:
                             )
                         )
             pending_exits.clear()
+
+            # Step A2: Execute PENDING PARTIAL PROFIT-TAKES at Today's OPEN
+            for sym, frac in list(pending_partials.items()):
+                if sym in positions and sym in stock_date_maps:
+                    pos = positions[sym]
+                    if not pos.get("partial_taken", False) and pos["qty"] >= 2:
+                        stk_map = stock_date_maps[sym]
+                        if current_dt in stk_map.index:
+                            open_px = float(stk_map.loc[current_dt]["open"])
+                            trim_qty = int(pos["qty"] * frac)
+                            if 0 < trim_qty < pos["qty"]:
+                                trim_val = trim_qty * open_px
+                                cash += trim_val
+                                pos["qty"] -= trim_qty
+                                pos["invested"] = pos["qty"] * pos["entry_price"]
+                                pos["partial_exit_val"] = pos.get("partial_exit_val", 0.0) + trim_val
+                                pos["partial_taken"] = True
+            pending_partials.clear()
 
             # ---------------------------------------------------------
             # Step B: Execute PENDING ENTRIES at Today's OPEN
@@ -316,11 +344,15 @@ class PortfolioBacktester:
                         cash -= invested
                         positions[sym] = {
                             "qty": qty,
+                            "orig_qty": qty,
                             "entry_price": open_px,
                             "entry_date": date_str,
                             "entry_dt": current_dt,
                             "entry_trading_idx": current_idx,
                             "invested": invested,
+                            "orig_invested": invested,
+                            "partial_exit_val": 0.0,
+                            "partial_taken": False,
                             "remaining_margin": cash,
                             "industry": sec,
                             "peak_high": open_px,
@@ -375,6 +407,13 @@ class PortfolioBacktester:
                         pending_exits[sym] = "Stage 2 Breakdown (Close < 50 EMA)"
                     elif close < low_20_prev:
                         pending_exits[sym] = f"{self.exit_len}-Day Low Breakdown"
+                    elif (
+                        self.partial_tp_enabled
+                        and not positions[sym].get("partial_taken", False)
+                        and unrealized_pnl_pct >= self.partial_tp_threshold_pct
+                        and positions[sym]["qty"] >= 2
+                    ):
+                        pending_partials[sym] = self.partial_tp_fraction
 
                 # 2. Check Breakout Entry (ONLY when Nifty 500 is Bullish >= 50 EMA)
                 elif is_market_bullish:
@@ -677,6 +716,9 @@ def main() -> None:
         exit_on_stage2_break=getattr(cfg.strategy, "exit_on_stage2_break", True),
         profit_lock_threshold_pct=getattr(cfg.strategy, "profit_lock_threshold_pct", 25.0),
         profit_lock_ema_len=getattr(cfg.strategy, "profit_lock_ema_len", 20),
+        partial_tp_enabled=getattr(cfg.strategy, "partial_tp_enabled", True),
+        partial_tp_threshold_pct=getattr(cfg.strategy, "partial_tp_threshold_pct", 30.0),
+        partial_tp_fraction=getattr(cfg.strategy, "partial_tp_fraction", 0.5),
         max_loss_holding_days=getattr(cfg.strategy, "max_loss_holding_days", 20),
         universe_csv=args.universe,
         start_date=args.start,

@@ -144,7 +144,8 @@ def main() -> None:
         if result.exits:
             print("\n🔴 EXITS TO CLOSE (Sell on Kite):")
             for ex in result.exits:
-                print(f"  • {ex.symbol:<10} | Close: ₹{ex.close_price:.2f} | 20D Low: ₹{ex.low_20_level:.2f} | PnL: ₹{ex.pnl:+.2f} ({ex.pnl_pct:+.2f}%)")
+                tag = "[PARTIAL] " if ex.is_partial else ""
+                print(f"  • {tag}{ex.symbol:<10} | Qty: {ex.quantity:<4} | Close: ₹{ex.close_price:.2f} | PnL: ₹{ex.pnl:+.2f} ({ex.pnl_pct:+.2f}%) | {ex.exit_reason}")
 
         if result.recommended_entries:
             print(f"\n🟢 RECOMMENDED BUYS (Strategy Budget: ₹{portfolio.total_capital:,.0f} | Base Slot: ₹{portfolio.position_size:,.0f}):")

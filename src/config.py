@@ -41,6 +41,9 @@ class StrategyConfig:
     exit_on_stage2_break: bool = True
     profit_lock_threshold_pct: float = 25.0
     profit_lock_ema_len: int = 20
+    partial_tp_enabled: bool = True
+    partial_tp_threshold_pct: float = 30.0
+    partial_tp_fraction: float = 0.5
     max_loss_holding_days: int = 20
     atr_len: int = 14
     atr_mult: float = 2.0
@@ -178,6 +181,9 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             exit_on_stage2_break=bool(strategy_data.get("exit_on_stage2_break", True)),
             profit_lock_threshold_pct=float(strategy_data.get("profit_lock_threshold_pct", 25.0)),
             profit_lock_ema_len=int(strategy_data.get("profit_lock_ema_len", 20)),
+            partial_tp_enabled=bool(strategy_data.get("partial_tp_enabled", True)),
+            partial_tp_threshold_pct=float(strategy_data.get("partial_tp_threshold_pct", 30.0)),
+            partial_tp_fraction=float(strategy_data.get("partial_tp_fraction", 0.5)),
             max_loss_holding_days=int(strategy_data.get("max_loss_holding_days", 20)),
             atr_len=int(strategy_data.get("atr_len", 14)),
             atr_mult=float(strategy_data.get("atr_mult", 2.0)),
@@ -185,6 +191,7 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
         filters=FilterConfig(
             near_52w_high_enabled=bool(filter_data.get("near_52w_high_enabled", True)),
             within_52w_high_pct=float(filter_data.get("within_52w_high_pct", 10.0)),
+            stage_2_trend_enabled=bool(filter_data.get("stage_2_trend_enabled", True)),
             min_stock_price=float(filter_data.get("min_stock_price", 20.0)),
             min_20d_avg_volume=int(filter_data.get("min_20d_avg_volume", 50000)),
         ),

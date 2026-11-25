@@ -36,6 +36,7 @@ The system runs an optimized **Turtle System 2** trend-following model with stri
 | **Ranking Score** | **$\text{Breakout } \% \times \text{RVOL}$** | Breaks ties by prioritizing the strongest price momentum backed by volume. |
 | **Market Regime Filter** | **Nifty 500 Index $\ge 50\text{ EMA}$** | Prevents opening new long positions when the broad market is in a downtrend. |
 | **Profit-Lock Exit (Tier 1)**| **Unrealized Gain $\ge +25\%$ & Close $< 20\text{ EMA}$** (`profit_lock_threshold_pct: 25.0`) | Locks in profits on mature winners at trend exhaustion rather than round-tripping gains. |
+| **Partial Profit-Taking**  | **Book 50% at Unrealized Gain $\ge +30\%$** (`partial_tp_enabled: true`, `partial_tp_threshold_pct: 30.0`, `partial_tp_fraction: 0.5`) | De-risks mature winners and recycles cash into fresh breakouts without closing the slot; improves Sharpe and compresses drawdowns across all horizons. |
 | **Stage 2 Exit (Tier 2)**   | **Close $< 50\text{ EMA}$** (`exit_on_stage2_break: true`) | Systematic structural exit when intermediate Stage 2 uptrend is broken. |
 | **Tenure Loss Cut**        | **Held $\ge 20$ Trading Days & $P\&L < 0$** (`max_loss_holding_days: 20`) | Prunes stagnant positions that fail to ignite after 1 month, recycling capital into fresh leaders. |
 | **Channel Exit Fallback**  | **20-Day Donchian Low** (`exit_len: 20`) | Fallback trailing exit for channel preservation. |
@@ -214,8 +215,11 @@ The daily alerts (`src/discord_notifier.py`) use a retro Bloomberg Terminal rece
    - **No Account Balance Contamination:** External funds in the user's Zerodha account (e.g. ₹5,00,000 or ₹10,00,000) are NEVER used to size positions. `kite.margins("equity")` is logged purely for diagnostics.
    - **Automatic Scaling:** If the user wishes to increase the portfolio value in the future, simply update `total_capital` in `config/settings.yaml` (e.g. `250000.0`). Available cash and suggested lot counts scale proportionately without code changes.
    - **Cash Reconciliation:** Strategy cash is dynamically maintained as: $\text{Cash} = \max(0, \text{Total Capital} + \text{Realized P&L} - \text{Total Invested})$.
-3. **Exchange Synchronization:**
+3. **Exchange Synchronization & Live-Scan Parity:**
    - Both `status.sh` and `run_daily_scan.py` automatically call `PortfolioManager.sync_with_exchange(kite)` to reconcile strategy state with real account Demat holdings, eliminating stale or dummy local JSON values.
+   - `sync_with_exchange` reconciles exits even when all Demat holdings are closed (`exchange_stocks == {}`), populates missing `industry` metadata from `data/nifty500.csv` for sector-cap enforcement, records partial quantity trims cleanly, and captures live LTP on external exits.
+   - `MarketDataFetcher.fetch_daily_candles` validates cache freshness against the latest trading day and incrementally fetches missing bars from Kite rather than serving stale `>= 250`-row CSVs.
+   - `StrategyEngine.run_daily_scan` computes mark-to-market equity and sequentially deducts recommended buy allocations from projected cash (including proceeds from today's full/partial exits) so total recommended capital never exceeds available strategy cash.
 4. **Shell Script Compatibility:**
    - `status.sh` and `restart.sh` are strictly POSIX-compliant (`sh` and `bash` compatible) using `"$0"` directory resolution to prevent `Bad substitution` errors on Debian/Raspberry Pi OS (`dash`).
 
