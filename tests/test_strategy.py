@@ -631,6 +631,81 @@ def test_backtester_partial_profit_taking():
     assert res["ending_equity"] > 200000.0
 
 
+def test_max_stock_price_filter():
+    """Verify max_stock_price is disabled by default in config and filters expensive stocks when explicitly enabled."""
+    from src.config import load_config
+    from src.strategy import StrategyEngine
+    from src.universe import StockInfo
+    from scripts.backtest import PortfolioBacktester
+
+    cfg_loaded = load_config()
+    assert cfg_loaded.filters.max_stock_price is None
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        cfg = AppConfig(
+            capital=CapitalConfig(total_capital=200000.0, position_size=20000.0, max_positions=10),
+            strategy=StrategyConfig(entry_len=20, exit_len=20),
+            filters=FilterConfig(
+                near_52w_high_enabled=False,
+                stage_2_trend_enabled=False,
+                min_stock_price=100.0,
+                max_stock_price=3000.0,
+                min_20d_avg_volume=1000,
+            ),
+            market_regime=__import__("src.config", fromlist=["MarketRegimeConfig"]).MarketRegimeConfig(enabled=False),
+            files=FilesConfig(state_file=os.path.join(temp_dir, "state_maxpx.json")),
+        )
+        pm = PortfolioManager(cfg)
+        dates = pd.bdate_range(end="2026-11-25", periods=40)
+
+        def make_breakout_df(price):
+            closes = np.linspace(price * 0.85, price * 0.92, 40)
+            highs = closes + 1.0
+            closes[-1] = price
+            highs[-1] = price + 1.0
+            return pd.DataFrame({
+                "date": dates,
+                "open": closes - 0.5,
+                "high": highs,
+                "low": closes - 1.0,
+                "close": closes,
+                "volume": np.full(40, 100000),
+            })
+
+        class StubFetcher:
+            def fetch_daily_candles(self, instrument_token, symbol, days=365, use_cache=True):
+                return make_breakout_df(8000.0 if symbol == "EXPENSIVE" else 1500.0)
+
+        universe = [
+            StockInfo(symbol="EXPENSIVE", company_name="Expensive Co", industry="Auto", instrument_token=1),
+            StockInfo(symbol="AFFORDABLE", company_name="Affordable Co", industry="IT", instrument_token=2),
+        ]
+        res = StrategyEngine(cfg, portfolio=pm, fetcher=StubFetcher()).run_daily_scan(universe=universe, use_cache=True)
+        syms = [c.symbol for c in res.recommended_entries]
+        assert "AFFORDABLE" in syms
+        assert "EXPENSIVE" not in syms
+
+        # Verify PortfolioBacktester also respects max_stock_price
+        from src.indicators import compute_indicators
+        bt_dates = pd.bdate_range(start="2026-01-01", periods=65)
+        exp_c = np.full(65, 7000.0)
+        exp_c[51:56] = 8000.0
+        exp_c[56:] = 6000.0
+        df_exp = compute_indicators(pd.DataFrame({
+            "date": bt_dates, "dt": bt_dates.tz_localize(None),
+            "open": exp_c, "high": exp_c + 1.0, "low": exp_c - 1.0, "close": exp_c, "volume": np.full(65, 100000),
+        }), entry_len=50, exit_len=20)
+        bt = PortfolioBacktester(
+            initial_capital=200000.0, entry_len=50, exit_len=20,
+            use_market_regime=False, use_stage_2=False, within_52w_pct=50.0,
+            max_stock_price=3000.0, start_date="2026-01-01",
+        )
+        assert bt.run({"EXPENSIVE": df_exp})["total_trades"] == 0
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 
 
 

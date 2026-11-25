@@ -328,8 +328,11 @@ class StrategyEngine:
             if eval_res.get("is_breakout") and eval_res.get("passes_52w_filter") and eval_res.get("passes_stage_2", True):
                 close = eval_res["close"]
 
-                # Liquidity & Penny Stock Filter
+                # Liquidity, Penny Stock & Max Price Filter
                 if close < self.config.filters.min_stock_price:
+                    continue
+                max_stock_px = getattr(self.config.filters, "max_stock_price", None)
+                if max_stock_px is not None and max_stock_px > 0 and close > max_stock_px:
                     continue
                 if eval_res.get("vol_sma_20", 0) < self.config.filters.min_20d_avg_volume:
                     continue

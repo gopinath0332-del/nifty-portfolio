@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import yaml
 from dotenv import dotenv_values, load_dotenv
@@ -55,6 +55,7 @@ class FilterConfig:
     within_52w_high_pct: float = 10.0
     stage_2_trend_enabled: bool = True
     min_stock_price: float = 100.0
+    max_stock_price: Optional[float] = None
     min_20d_avg_volume: int = 50000
 
 
@@ -193,6 +194,11 @@ def load_config(config_path: str | Path | None = None, env_path: str | Path | No
             within_52w_high_pct=float(filter_data.get("within_52w_high_pct", 10.0)),
             stage_2_trend_enabled=bool(filter_data.get("stage_2_trend_enabled", True)),
             min_stock_price=float(filter_data.get("min_stock_price", 20.0)),
+            max_stock_price=(
+                float(filter_data["max_stock_price"])
+                if filter_data.get("max_stock_price") not in (None, "", 0, 0.0)
+                else None
+            ),
             min_20d_avg_volume=int(filter_data.get("min_20d_avg_volume", 50000)),
         ),
         market_regime=MarketRegimeConfig(

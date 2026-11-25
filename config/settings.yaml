@@ -31,6 +31,7 @@ filters:
   within_52w_high_pct: 10.0 # Stock must be within 10% of its 52-week high (filters deep pullbacks)
   stage_2_trend_enabled: true # Price > 50 EMA > 200 SMA (Stan Weinstein / Mark Minervini Stage 2)
   min_stock_price: 100.0 # Avoid penny and low-priced stocks below ₹100
+  max_stock_price: null # Optional upper price cap in INR (null/0 = disabled; 15% position cap naturally skips stocks > slot budget)
   min_20d_avg_volume: 50000 # Minimum 20-day average daily volume for liquidity
 
 market_regime:

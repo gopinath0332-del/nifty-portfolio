@@ -75,6 +75,7 @@ class PortfolioBacktester:
         max_position_size_pct: float = 15.0,
         use_stage_2: bool = True,
         min_stock_price: float = 100.0,
+        max_stock_price: Optional[float] = None,
         start_date: str = "2026-01-01",
         end_date: Optional[str] = None,
         exit_on_stage2_break: bool = True,
@@ -102,6 +103,7 @@ class PortfolioBacktester:
         self.max_position_size_pct = max_position_size_pct
         self.use_stage_2 = use_stage_2
         self.min_stock_price = min_stock_price
+        self.max_stock_price = max_stock_price if (max_stock_price is not None and max_stock_price > 0) else None
         self.exit_on_stage2_break = exit_on_stage2_break
         self.profit_lock_threshold_pct = profit_lock_threshold_pct
         self.profit_lock_ema_len = profit_lock_ema_len
@@ -419,7 +421,8 @@ class PortfolioBacktester:
                 elif is_market_bullish:
                     is_breakout = close > high_20_prev
                     passes_52w = dist_52w >= -self.within_52w_pct
-                    is_liquid = close >= self.min_stock_price and float(row.get("vol_sma_20", 0)) >= 50000
+                    passes_max_px = True if self.max_stock_price is None else (close <= self.max_stock_price)
+                    is_liquid = close >= self.min_stock_price and passes_max_px and float(row.get("vol_sma_20", 0)) >= 50000
                     passes_stage2 = is_stage_2 if self.use_stage_2 else True
 
                     if is_breakout and passes_52w and is_liquid and passes_stage2 and high_20_prev > 0:
@@ -544,6 +547,7 @@ class PortfolioBacktester:
             "calmar_ratio": calmar_ratio,
             "use_stage_2": self.use_stage_2,
             "min_stock_price": self.min_stock_price,
+            "max_stock_price": self.max_stock_price,
             "total_trades": total_trades,
             "winning_trades": len(wins),
             "losing_trades": len(losses),
@@ -603,6 +607,7 @@ def print_backtest_report(res: Dict) -> None:
         ["Calmar Ratio", f"{res.get('calmar_ratio', 0.0):.2f}"],
         ["Stage 2 Trend Filter", "ENABLED (Price > 50 EMA > 200 SMA)" if res.get("use_stage_2") else "DISABLED"],
         ["Min Stock Price Filter", f"≥ ₹{res.get('min_stock_price', 100.0):.0f}"],
+        ["Max Stock Price Filter", f"≤ ₹{res['max_stock_price']:,.0f}" if res.get("max_stock_price") else "DISABLED (No Cap)"],
         ["Profit Factor", f"{res['profit_factor']:.2f}"],
         ["Total Closed Trades", f"{res['total_trades']}"],
         ["Winning Trades", f"{res['winning_trades']} ({res['win_rate']:.1f}%)"],
@@ -688,6 +693,7 @@ def main() -> None:
     parser.add_argument("--max-per-sector", type=int, default=None, help="Max stocks per sector (default: from settings.yaml)")
     parser.add_argument("--no-stage-2", action="store_true", help="Disable Stage 2 Trend Filter (Price > 50 EMA > 200 SMA)")
     parser.add_argument("--min-price", type=float, default=None, help="Minimum stock price (default: from settings.yaml)")
+    parser.add_argument("--max-price", type=float, default=None, help="Maximum stock price (default: from settings.yaml; 0 to disable)")
     parser.add_argument("--universe", default="data/nifty500.csv", help="Universe CSV or name ('nifty50', 'nifty500', path)")
     args = parser.parse_args()
 
@@ -696,6 +702,10 @@ def main() -> None:
     sector_limit = args.max_per_sector if args.max_per_sector is not None else cfg.capital.max_per_sector
     use_stage_2 = not args.no_stage_2 if args.no_stage_2 else getattr(cfg.filters, "stage_2_trend_enabled", True)
     min_stock_price = args.min_price if args.min_price is not None else getattr(cfg.filters, "min_stock_price", 100.0)
+    if args.max_price is not None:
+        max_stock_price = args.max_price if args.max_price > 0 else None
+    else:
+        max_stock_price = getattr(cfg.filters, "max_stock_price", None)
 
     backtester = PortfolioBacktester(
         initial_capital=cfg.capital.total_capital,
@@ -713,6 +723,7 @@ def main() -> None:
         max_position_size_pct=cfg.capital.max_position_size_pct,
         use_stage_2=use_stage_2,
         min_stock_price=min_stock_price,
+        max_stock_price=max_stock_price,
         exit_on_stage2_break=getattr(cfg.strategy, "exit_on_stage2_break", True),
         profit_lock_threshold_pct=getattr(cfg.strategy, "profit_lock_threshold_pct", 25.0),
         profit_lock_ema_len=getattr(cfg.strategy, "profit_lock_ema_len", 20),
