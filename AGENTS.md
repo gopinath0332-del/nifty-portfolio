@@ -18,7 +18,7 @@ Welcome to the **Nifty 500 Portfolio Engine**. This repository is an institution
    - All entrypoint scripts in `scripts/` are strictly compiled and validated via automated pytest (`test_all_scripts_syntax`) to prevent deployment indentation or syntax regressions.
    - If changes affect indicators, portfolio management, or configuration, add or update corresponding unit tests in `tests/test_strategy.py`.
 4. **PORTFOLIO CAPITAL BASELINE:**
-   - The active baseline capital is **₹1,00,000 INR** (`total_capital: 100000.0` in `config/settings.yaml`).
+   - The active baseline capital is **₹2,00,000 INR** (`total_capital: 200000.0` in `config/settings.yaml`).
 
 ---
 
@@ -209,10 +209,10 @@ The daily alerts (`src/discord_notifier.py`) use a retro Bloomberg Terminal rece
      - Live Demat holdings via `kite.holdings()`.
      - Live open delivery positions via `kite.positions()`.
      - Live CMP quotes via `kite.quote()`.
-2. **Fixed Portfolio Budget Isolation & Sizing (₹1,00,000 Baseline):**
-   - **Strategy Cash Isolation:** Sizing and available cash are strictly governed by the dedicated strategy budget (`total_capital: 100000.0` in `config/settings.yaml`), completely isolated from Zerodha's overall account cash.
+2. **Fixed Portfolio Budget Isolation & Sizing (₹2,00,000 Baseline):**
+   - **Strategy Cash Isolation:** Sizing and available cash are strictly governed by the dedicated strategy budget (`total_capital: 200000.0` in `config/settings.yaml`), completely isolated from Zerodha's overall account cash.
    - **No Account Balance Contamination:** External funds in the user's Zerodha account (e.g. ₹5,00,000 or ₹10,00,000) are NEVER used to size positions. `kite.margins("equity")` is logged purely for diagnostics.
-   - **Automatic Scaling:** If the user wishes to increase the portfolio value in the future, simply update `total_capital` in `config/settings.yaml` (e.g. `200000.0`). Available cash and suggested lot counts scale proportionately without code changes.
+   - **Automatic Scaling:** If the user wishes to increase the portfolio value in the future, simply update `total_capital` in `config/settings.yaml` (e.g. `250000.0`). Available cash and suggested lot counts scale proportionately without code changes.
    - **Cash Reconciliation:** Strategy cash is dynamically maintained as: $\text{Cash} = \max(0, \text{Total Capital} + \text{Realized P&L} - \text{Total Invested})$.
 3. **Exchange Synchronization:**
    - Both `status.sh` and `run_daily_scan.py` automatically call `PortfolioManager.sync_with_exchange(kite)` to reconcile strategy state with real account Demat holdings, eliminating stale or dummy local JSON values.
