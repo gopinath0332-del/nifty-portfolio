@@ -356,6 +356,35 @@ def test_all_scripts_syntax():
         py_compile.compile(str(script_path), doraise=True)
 
 
+def test_rsi_on_ema_gap_up_indicators():
+    """Verify RSI(14) applied on EMA drops below 10 on sustained downtrends without lookahead."""
+    from scripts.test_rsi_ema_gap_up import compute_gap_up_indicators, compute_wilder_rsi
+
+    dates = pd.date_range(start="2026-01-01", periods=50, freq="B")
+    # Smooth steady decline so EMA(21) declines consecutively -> RSI(EMA) < 10
+    closes = np.linspace(200.0, 120.0, 50)
+    df = pd.DataFrame({
+        "date": dates,
+        "dt": dates,
+        "open": closes + 0.5,
+        "high": closes + 1.0,
+        "low": closes - 1.0,
+        "close": closes,
+        "volume": np.full(50, 100000),
+    })
+    # Final bar gaps up +5%
+    df.loc[49, "open"] = df.loc[48, "close"] * 1.05
+
+    ind = compute_gap_up_indicators(df, ema_source_len=21, rsi_len=14, exit_ema_len=21)
+    assert ind["rsi_ema_prev"].iloc[-1] < 10.0
+    assert ind["rsi_ema_prev"].iloc[-1] == pytest.approx(ind["rsi_ema"].iloc[-2])
+    assert ind["gap_pct"].iloc[-1] == pytest.approx(5.0, rel=1e-4)
+    # Rising monotonic series should produce RSI ~ 100
+    rising = pd.Series(np.linspace(100.0, 200.0, 30))
+    assert compute_wilder_rsi(rising, length=14).iloc[-1] == pytest.approx(100.0)
+
+
+
 
 
 

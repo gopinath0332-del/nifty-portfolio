@@ -78,6 +78,7 @@ nifty-portfolio/
 │   ├── test_darvas_box.py     # Darvas Box & Screener.in multi-horizon benchmark
 │   ├── test_capital_infusion.py # Real-life capital addition & SIP compounding multi-horizon benchmark
 │   ├── test_fixed_vs_dynamic.py # Fixed Sizing vs Dynamic Profit Compounding benchmark
+│   ├── test_rsi_ema_gap_up.py # RSI(14) on EMA < 10 Gap-Up strategy benchmark
 │   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
 │   ├── test_strategy.py       # Pytest unit tests for strategy modules
@@ -154,6 +155,10 @@ nifty-portfolio/
 13. **Run Fixed Sizing vs. Dynamic Profit Compounding Benchmark:**
    ```powershell
    python scripts/test_fixed_vs_dynamic.py
+   ```
+14. **Run RSI(14) on EMA < 10 Gap-Up Benchmark:**
+   ```powershell
+   python scripts/test_rsi_ema_gap_up.py
    ```
 
 ---
@@ -969,6 +974,41 @@ A comparative multi-horizon backtest (`scripts/test_fixed_vs_dynamic.py`) was co
    - The exponential explosion of dynamic compounding becomes dominant after Month 24, when the base equity expands significantly.
 3. **Conclusion**:
    - The engine's active configuration (`sizing_mode: "risk_pct"`) is mathematically optimal for multi-year compounding.
+
+---
+
+### 🔬 RSI(14) ON EMA < 10 GAP-UP STRATEGY BENCHMARK & RESEARCH
+
+A multi-horizon backtest (`scripts/test_rsi_ema_gap_up.py`) was conducted across the Nifty 500 universe (capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 concurrent slots, max 3 per sector, `Prev Close >= ₹100`, `20D Avg Vol >= 50,000`) testing the **RSI-on-EMA Gap-Up Strategy**:
+- **Indicator**: `RSI(14)` applied to `EMA(close)` (TradingView `Source: EMA`) instead of raw `Close`. Tested with both `EMA(21)` and TradingView default `EMA(9)`.
+- **Entry (Zero Lookahead)**: Prior day `RSI_on_EMA[t-1] < 10.0` AND Day `t` opens on a gap up (`Open[t] > Close[t-1]`). Buy at `Open[t]`.
+- **Stop Loss**: Gap distance `Open[t] - Close[t-1]` $\implies$ `Stop Price = Close[t-1]` (previous day's close / gap-fill level), checked intraday (`Low <= Stop`) and on gap-downs (`Open <= Stop`).
+- **21 EMA Exit Modes**:
+  - **Unlatched (Raw)**: Exit at next day's open whenever `Close < 21 EMA`.
+  - **Latched (Reclaim-then-Break)**: Hold with the Gap-Fill Stop (`Prev Close`) until price closes $\ge 21\text{ EMA}$, then exit at next day's open when `Close < 21 EMA`.
+
+#### 📊 4-Horizon Comparative Performance Matrix:
+
+| Strategy Variant | 2026 YTD Return (DD) | Last 12M Return (DD) | Last 2Y Return (DD) | Last 5Y Return (DD) | 5Y Ending Equity | 5Y PF | 5Y Win Rate | 5Y Avg Hold |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline (50D Donchian, 2-Tier)** | **+37.46%** (**-8.8%**) | **+40.54%** (**-10.1%**) | **+79.86%** (**-12.8%**) | **+467.66%** (-29.5%) | **₹5,67,659.24** | **3.09** | **44.6%** (289T) | 47.0d |
+| **Var 1: Raw EMA21 (Gap>0, Unlatched)** | +6.06% (-13.2%) | -8.07% (-22.1%) | -29.21% (-43.3%) | -54.49% (-60.4%) | ₹45,506.22 | 0.83 | 19.4% (4,993T) | 1.8d |
+| **Var 2: Raw EMA9 (Gap>0, Unlatched)** | -16.73% (-20.3%) | -24.22% (-27.5%) | -30.31% (-38.3%) | -38.98% (-45.3%) | ₹61,021.76 | 0.88 | 19.8% (5,280T) | 0.8d |
+| **Var 3: EMA21 (Gap>0, Latched 21EMA)** | +6.49% (-15.6%) | -3.68% (-21.8%) | -19.42% (-34.8%) | -33.24% (-45.6%) | ₹66,756.19 | 0.86 | 12.4% (3,286T) | 3.5d |
+| **Var 4: EMA21 (Gap>=2%, Latched)** | +20.68% (-14.5%) | +14.92% (-14.6%) | +15.92% (-18.4%) | +48.40% (-26.7%) | ₹1,48,402.28 | 1.15 | 26.5% (756T) | 8.7d |
+| **Var 5: EMA21 (Gap>=2%, Latched+Reg)** | +4.75% (-9.3%) | +1.08% (-12.9%) | +22.93% (-13.9%) | +50.53% (**-14.0%**) | ₹1,50,528.61 | 1.41 | 30.2% (311T) | 10.7d |
+| **Var 6: EMA9 (Gap>=2%, Latched)** | -2.12% (-13.9%) | -4.27% (-15.6%) | -1.59% (-16.9%) | +20.72% (-24.7%) | ₹1,20,724.79 | 1.10 | 25.3% (462T) | 7.7d |
+
+#### 🔍 Key Quantitative Findings & Failure Mechanics:
+
+1. **The Oversold-Exit Paradox (`83%`–`96%` Still Below 21 EMA on Entry Day)**:
+   - Because `RSI(14)` on an EMA only drops below `10` during a sustained multi-week downtrend, **83.0%** of `EMA(21)` gap-ups (and **95.8%** of `EMA(9)` gap-ups) STILL close **below the 21 EMA** on the gap-up day itself.
+   - An unlatched `Close < 21 EMA` exit therefore liquidates almost every survivor on Day 1–2 (`0.8d`–`1.8d` average hold), generating ~5,000+ churn trades and `-38.98%` to `-54.49%` 5-year losses.
+2. **The Micro-Gap Stop-Out Trap (Median Gap is Only `+0.49%`)**:
+   - Counting any `Open > Prev Close` includes tiny `+0.1%` to `+0.5%` gaps whose Gap-Fill Stop (`Prev Close`) sits inside normal opening noise. Across 5 years, **73%–84%** of un-filtered trades get stopped out intraday at `Low <= Prev Close`.
+3. **Filtering for Meaningful Gaps (`Gap >= 2%`) + Latched 21 EMA Turns the Strategy Profitable**:
+   - Requiring `Gap >= +2.0%` + Latched 21 EMA (`Var 4`) flips 5-year performance from `-54.49%` to **+48.40%** (`+20.68%` in 2026 YTD, `PF 1.15`, `26.5%` win rate, `3.16x` payout ratio).
+   - Adding the Nifty 500 `>= 50 EMA` Regime Filter (`Var 5`) improves 5-year return slightly to **+50.53%**, cuts 5-year Max Drawdown nearly in half from **-26.66% to -13.97%**, and raises Profit Factor to **1.41** (`30.2%` win rate), though it still trails the **Baseline 50D Donchian (+467.66%, PF 3.09)** by a wide margin because buying beaten-down downtrend bounces has lower follow-through than buying Stage-2 breakouts near 52-week highs.
 
 
 
