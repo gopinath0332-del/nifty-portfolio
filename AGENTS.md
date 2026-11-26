@@ -82,6 +82,7 @@ nifty-portfolio/
 │   ├── test_capital_infusion.py # Real-life capital addition & SIP compounding multi-horizon benchmark
 │   ├── test_fixed_vs_dynamic.py # Fixed Sizing vs Dynamic Profit Compounding benchmark
 │   ├── test_rsi_ema_gap_up.py # RSI(14) on EMA < 10 Gap-Up strategy benchmark
+│   ├── test_vcp.py            # Volatility Contraction Pattern (VCP) multi-horizon benchmark
 │   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
 │   ├── test_strategy.py       # Pytest unit tests for strategy modules
@@ -162,6 +163,10 @@ nifty-portfolio/
 14. **Run RSI(14) on EMA < 10 Gap-Up Benchmark:**
    ```powershell
    python scripts/test_rsi_ema_gap_up.py
+   ```
+15. **Run Volatility Contraction Pattern (VCP) Multi-Horizon Benchmark:**
+   ```powershell
+   python scripts/test_vcp.py
    ```
 
 ---
@@ -1017,6 +1022,30 @@ A multi-horizon backtest (`scripts/test_rsi_ema_gap_up.py`) was conducted across
 3. **Filtering for Meaningful Gaps (`Gap >= 2%`) + Latched 21 EMA Turns the Strategy Profitable**:
    - Requiring `Gap >= +2.0%` + Latched 21 EMA (`Var 4`) flips 5-year performance from `-54.49%` to **+48.40%** (`+20.68%` in 2026 YTD, `PF 1.15`, `26.5%` win rate, `3.16x` payout ratio).
    - Adding the Nifty 500 `>= 50 EMA` Regime Filter (`Var 5`) improves 5-year return slightly to **+50.53%**, cuts 5-year Max Drawdown nearly in half from **-26.66% to -13.97%**, and raises Profit Factor to **1.41** (`30.2%` win rate), though it still trails the **Baseline 50D Donchian (+467.66%, PF 3.09)** by a wide margin because buying beaten-down downtrend bounces has lower follow-through than buying Stage-2 breakouts near 52-week highs.
+
+---
+
+### 🔬 VOLATILITY CONTRACTION PATTERN (VCP) BENCHMARK & RESEARCH
+
+A multi-horizon backtest (`scripts/test_vcp.py`) was conducted across the Nifty 500 universe (496 cached stocks, capital ₹1,00,000, 1.25% risk/trade, max 15% allocation cap, max 10 concurrent slots, max 3 per sector, `Close >= ₹100`, `20D Avg Vol >= 50,000`, Nifty 500 `>= 50 EMA` regime filter, Day T close signal $\to$ Day T+1 open execution):
+- **Prior Uptrend**: Cross-sectional Relative Strength Rank $\ge 70$ across Nifty 500 + Stage 2 (`Close > 50 EMA > 200 SMA`).
+- **The Base**: 3+ weeks consolidation (`20D` or `30D` window), base depth $\le 35\%$.
+- **Contractions**: 2nd half `ATR%` $\le 0.9 \times$ 1st half `ATR%`.
+- **Volume Dry-Up**: 2nd half avg volume $\le 0.9 \times$ 1st half avg volume.
+- **Breakout**: Fresh close above base pivot (`Close[t] > Pivot` and `Close[t-1] <= Pivot`).
+
+| Horizon | Baseline (50D Donchian) | VCP-20D (2-Tier Exit) | VCP-20D Strict (RVOL$\ge$1.2 + Range + UpVol) | VCP-30D (2-Tier Exit) | VCP-20D (20 EMA Trail) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **2026 YTD** | **+35.55%** (-8.23% DD, PF 2.39) | -1.53% (-12.79% DD, PF 0.94, 54T) | +2.21% (PF 1.14, 40.9% WR, 44T) | **+33.45%** (**PF 3.78**) | -3.06% (-9.40% DD) |
+| **Last 12 Months** | **+51.68%** (-8.35% DD, PF 3.22) | +5.16% (-8.46% DD, PF 1.17, 66T) | +9.04% (PF 1.48, 40.4% WR, 52T) | **+41.79%** (**PF 3.69**) | -2.45% (-11.23% DD) |
+| **Last 2 Years** | **+87.65%** (-9.39% DD, PF 2.88) | -6.76% (-15.69% DD, PF 0.86, 107T) | +6.73% (PF 1.17, 40.2% WR, 92T) | **+52.31%** (PF 2.51) | +5.16% (-14.57% DD) |
+| **Last 5 Years** | **+418.30%** (-29.72% DD, PF 2.79) | +99.35% (-23.17% DD, PF 1.43, 303T) | +21.14% (PF 1.13, 36.2% WR, 287T) | **+138.09%** (PF 1.86) | +10.53% (-40.04% DD) |
+
+#### 🔍 Key Takeaways:
+1. **Base Duration Matters Enormously (`30D` vs `20D`)**: Extending the VCP base from 20 trading days (4 weeks) to 30 trading days (6 weeks) jumped returns from **-1.53% to +33.45% (YTD)** and **+5.16% to +41.79% (12M)** with an exceptional **3.78 / 3.69 Profit Factor**. Short 20-day bases catch minor pullbacks rather than true institutional consolidations.
+2. **2-Tier Exit Outperforms Pure 20 EMA Trail**: Using the repository's 2-tier exit + 20-day tenure cut outperformed a pure `Close < 20 EMA` trail across every horizon (`+99.35%` vs `+10.53%` over 5 years).
+3. **Baseline 50D Donchian Remains Superior**: While `VCP-30D` achieves higher Profit Factor in 2026 YTD (`3.78` vs `2.39`) and Last 12M (`3.69` vs `3.22`), the Baseline 50D Donchian Engine delivers higher total returns across all 4 horizons (`+418.30%` vs `+138.09%` over 5 years) because requiring simultaneous 2nd-half ATR% and volume contraction filters out many high-momentum Stage-2 leaders that break out on expanding volatility.
+
 
 
 
