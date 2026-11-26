@@ -83,6 +83,7 @@ nifty-portfolio/
 │   ├── test_fixed_vs_dynamic.py # Fixed Sizing vs Dynamic Profit Compounding benchmark
 │   ├── test_rsi_ema_gap_up.py # RSI(14) on EMA < 10 Gap-Up strategy benchmark
 │   ├── test_vcp.py            # Volatility Contraction Pattern (VCP) multi-horizon benchmark
+│   ├── test_ema200_rsi30.py   # 200 EMA + RSI(30) crossover multi-horizon benchmark
 │   └── test_notification.py   # Discord webhook layout test & live alert dispatcher
 ├── tests/
 │   ├── test_strategy.py       # Pytest unit tests for strategy modules
@@ -167,6 +168,10 @@ nifty-portfolio/
 15. **Run Volatility Contraction Pattern (VCP) Multi-Horizon Benchmark:**
    ```powershell
    python scripts/test_vcp.py
+   ```
+16. **Run 200 EMA + RSI(30) Crossover Multi-Horizon Benchmark:**
+   ```powershell
+   python scripts/test_ema200_rsi30.py
    ```
 
 ---
@@ -1045,6 +1050,35 @@ A multi-horizon backtest (`scripts/test_vcp.py`) was conducted across the Nifty 
 1. **Base Duration Matters Enormously (`30D` vs `20D`)**: Extending the VCP base from 20 trading days (4 weeks) to 30 trading days (6 weeks) jumped returns from **-1.53% to +33.45% (YTD)** and **+5.16% to +41.79% (12M)** with an exceptional **3.78 / 3.69 Profit Factor**. Short 20-day bases catch minor pullbacks rather than true institutional consolidations.
 2. **2-Tier Exit Outperforms Pure 20 EMA Trail**: Using the repository's 2-tier exit + 20-day tenure cut outperformed a pure `Close < 20 EMA` trail across every horizon (`+99.35%` vs `+10.53%` over 5 years).
 3. **Baseline 50D Donchian Remains Superior**: While `VCP-30D` achieves higher Profit Factor in 2026 YTD (`3.78` vs `2.39`) and Last 12M (`3.69` vs `3.22`), the Baseline 50D Donchian Engine delivers higher total returns across all 4 horizons (`+418.30%` vs `+138.09%` over 5 years) because requiring simultaneous 2nd-half ATR% and volume contraction filters out many high-momentum Stage-2 leaders that break out on expanding volatility.
+
+---
+
+### 🔬 200 EMA + RSI(30) CROSSOVER STRATEGY BENCHMARK & RESEARCH
+
+A multi-horizon backtest (`scripts/test_ema200_rsi30.py`) was conducted across the Nifty 500 universe (496 cached stocks, capital ₹1,00,000, max 10 concurrent slots, max 3 per sector, `Close >= ₹100`, `20D Avg Vol >= 50,000`, Day T close signal $\to$ Day T+1 open execution):
+- **Entry Rule**: `Close > 200 EMA` AND `RSI` crosses above `30` (`RSI[t-2] <= 30` and `RSI[t-1] > 30`).
+- **Exit Rule**: `RSI` crosses below `30` (either unlatched, or latched so `RSI` must first rise above `50` before the `30` cross-below exit arms) OR `Close < 200 EMA`.
+
+| Strategy Variant | 2026 YTD Return (DD) | Last 12M Return (DD) | Last 2Y Return (DD) | Last 5Y Return (DD) | 5Y Ending Equity | 5Y PF | 5Y Win Rate | 5Y Avg Hold |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Baseline (50D Donchian)** | **+35.55%** (**-8.23%**) | **+51.68%** (**-8.35%**) | **+87.65%** (**-9.39%**) | **+418.30%** (-29.72%) | **₹5,18,302.11** | **2.79** | **44.6%** (298T) | 46.2d |
+| **Var 1: Unlatched (`RSI14 >30`)** | +17.19% (-8.28%) | +8.74% (-11.25%) | -5.62% (-25.69%) | +87.58% (-30.01%) | ₹1,87,580.12 | 1.36 | 18.7% (198T) | 62.6d |
+| **Var 2: Latched `50->30` (Exact)** | +17.48% (-8.24%) | +8.75% (-11.26%) | -3.96% (-25.55%) | +42.41% (-43.83%) | ₹1,42,409.73 | 1.08 | 16.6% (199T) | 60.4d |
+| **Var 3: Latched `50->30` + 15% -8% SL** | +29.19% (-9.89%) | -1.21% (-12.09%) | +0.17% (-19.91%) | +42.15% (-30.39%) | ₹1,42,152.54 | 1.17 | 18.6% (204T) | 53.1d |
+| **Var 4: Latched `50->30` + Regime** | +5.11% (-3.83%) | -0.90% (-8.78%) | -4.88% (-13.94%) | +50.92% (**-25.36%**) | ₹1,50,917.05 | 1.53 | 19.8% (96T) | 75.2d |
+| **Var 5: `RSI2` Latched `50->30`** | +23.37% (-15.09%) | +18.78% (-17.42%) | +44.05% (-19.93%) | +129.08% (-30.02%) | ₹2,29,082.73 | 1.24 | 41.9% (1,479T) | 11.3d |
+
+#### 🔍 Key Takeaways:
+1. **Effect of `50 -> 30` Latch on `RSI(14)`**:
+   - Slightly improves 2026 YTD (`+17.48%` vs `+17.19%`), 12M (`+8.75%` vs `+8.74%`), and 2Y (`-3.96%` vs `-5.62%`), but hurts 5Y (`+42.41%` vs `+87.58%`, Max DD `-43.83%` vs `-30.01%`) because failed bounces that never reach RSI 50 are forced to hold until `Close < 200 EMA` (`84.9%` of exits vs `58.1%` unlatched).
+2. **Effect of `50 -> 30` Latch on `RSI(2)`**:
+   - Transforms `RSI(2)` from negative/flat in recent horizons (`-3.16%` YTD, `-3.48%` 12M, `+0.54%` 2Y) to **+23.37% (YTD)**, **+18.78% (12M)**, **+44.05% (2Y)**, and **+129.08% (5Y)** by giving short-term mean-reversion bounces room to reach `RSI(2) > 50` before arming the exit.
+3. **Significantly Trails Baseline 50D Donchian**:
+   - Across all 4 horizons, all variants trail the Baseline 50D Donchian Engine (`+418.30%` 5Y, `PF 2.79`, `44.6%` WR).
+4. **Volume Confirmation (`RVOL >= 1.2x / 1.5x`)**:
+   - On `RSI(14)` Latched `50->30`, adding `RVOL >= 1.2x` cuts 5Y Max Drawdown sharply from **-43.83% to -28.12%** and improves 5Y Win Rate (`16.6%` $\to$ `21.1%`) and Profit Factor (`1.08` $\to$ `1.32`), though total returns drop slightly (`+39.11%` vs `+42.41%` over 5Y; `+6.78%` vs `+17.48%` YTD) due to fewer entries (`133` vs `199` trades over 5Y).
+   - On `RSI(2)` Latched `50->30`, `RVOL >= 1.2x` cuts 5Y Max DD (`-30.02%` $\to$ `-24.22%`) and edges 5Y return up (`+129.08%` $\to$ `+130.26%`), but hurts 2026 YTD (`+23.37%` $\to$ `-2.05%`) and 12M (`+18.78%` $\to$ `-0.35%`).
+
 
 
 
