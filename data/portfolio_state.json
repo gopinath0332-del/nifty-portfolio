@@ -1,39 +1,9 @@
 {
-  "total_capital": 100000.0,
+  "total_capital": 200000.0,
   "position_size": 10000.0,
   "max_positions": 10,
-  "cash_balance": 37901.45,
+  "cash_balance": 170484.55,
   "positions": {
-    "BHEL": {
-      "symbol": "BHEL",
-      "entry_date": "2026-11-11",
-      "entry_price": 408.85,
-      "quantity": 25,
-      "invested_amount": 10221.25,
-      "stop_exit_level": 0.0,
-      "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
-    },
-    "MOTHERSON": {
-      "symbol": "MOTHERSON",
-      "entry_date": "2026-11-11",
-      "entry_price": 153.1,
-      "quantity": 65,
-      "invested_amount": 9951.5,
-      "stop_exit_level": 0.0,
-      "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
-    },
-    "NUVAMA": {
-      "symbol": "NUVAMA",
-      "entry_date": "2026-11-11",
-      "entry_price": 1753.2,
-      "quantity": 6,
-      "invested_amount": 10519.2,
-      "stop_exit_level": 0.0,
-      "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
-    },
     "PETRONET": {
       "symbol": "PETRONET",
       "entry_date": "2026-11-11",
@@ -42,7 +12,8 @@
       "invested_amount": 10636.5,
       "stop_exit_level": 0.0,
       "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
+      "industry": "Oil Gas & Consumable Fuels",
+      "partial_taken": false
     },
     "PNB": {
       "symbol": "PNB",
@@ -52,7 +23,8 @@
       "invested_amount": 10496.65,
       "stop_exit_level": 0.0,
       "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
+      "industry": "Financial Services",
+      "partial_taken": false
     },
     "UNIONBANK": {
       "symbol": "UNIONBANK",
@@ -62,7 +34,8 @@
       "invested_amount": 10273.45,
       "stop_exit_level": 0.0,
       "notes": "Auto-synced from Demat Holdings",
-      "industry": ""
+      "industry": "Financial Services",
+      "partial_taken": false
     }
   },
   "trade_history": [
@@ -78,8 +51,47 @@
       "pnl": 0.0,
       "pnl_pct": 0.0,
       "exit_reason": "Sold externally on Zerodha Exchange"
+    },
+    {
+      "symbol": "BHEL",
+      "entry_date": "2026-11-11",
+      "exit_date": "2026-11-26",
+      "entry_price": 408.85,
+      "exit_price": 424.5,
+      "quantity": 25,
+      "invested_amount": 10221.25,
+      "exit_amount": 10612.5,
+      "pnl": 391.25,
+      "pnl_pct": 3.83,
+      "exit_reason": "Sold externally on Zerodha Exchange"
+    },
+    {
+      "symbol": "MOTHERSON",
+      "entry_date": "2026-11-11",
+      "exit_date": "2026-11-26",
+      "entry_price": 153.1,
+      "exit_price": 166.4,
+      "quantity": 65,
+      "invested_amount": 9951.5,
+      "exit_amount": 10816.0,
+      "pnl": 864.5,
+      "pnl_pct": 8.69,
+      "exit_reason": "Sold externally on Zerodha Exchange"
+    },
+    {
+      "symbol": "NUVAMA",
+      "entry_date": "2026-11-11",
+      "exit_date": "2026-11-26",
+      "entry_price": 1753.2,
+      "exit_price": 1859.1,
+      "quantity": 6,
+      "invested_amount": 10519.2,
+      "exit_amount": 11154.6,
+      "pnl": 635.4,
+      "pnl_pct": 6.04,
+      "exit_reason": "Sold externally on Zerodha Exchange"
     }
   ],
   "last_scan_date": null,
-  "last_updated": "2026-11-24T20:52:58.648123"
+  "last_updated": "2026-11-26T13:06:26.613018"
 }

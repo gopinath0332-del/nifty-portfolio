@@ -55,6 +55,7 @@ The system runs an optimized **Turtle System 2** trend-following model with stri
 nifty-portfolio/
 ├── AGENTS.md                  # This file - Core rules, architecture, and agent instructions
 ├── GEMINI.md                  # Pointer to AGENTS.md for Gemini/Antigravity discovery
+├── STRATEGY.md                # Dedicated Entry/Exit conditions, ranking, and sizing specification
 ├── main.py                    # Production daily scanner and execution runner
 ├── config/
 │   └── settings.yaml          # Active strategy & portfolio parameters
